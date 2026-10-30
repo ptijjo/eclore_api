@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PlatformRole {
+  USER
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  RESTRICTED
+  SUSPENDED
+  EXCLUDED
+}
+
+enum CommunityVisibility {
+  PRIVATE
+}
+
+enum CommunityJoinPolicy {
+  OPEN
+  REQUEST
+}
+
+/// Cycle de vie éditorial — création Éclore uniquement (pas self-serve MVP).
+enum CommunityStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+/// Rôle **par adhésion** — distinct de PlatformRole (USER | ADMIN).
+enum MembershipRole {
+  OWNER
+  MODERATOR
+  MEMBER
+}
+
+/// Proposition membre → examen Éclore (pas de création automatique).
+enum CommunityProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  DISMISSED
+}
+
+/// Seul ACCEPTED autorise la lecture / écriture des contenus de la communauté.
+enum MembershipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  LEFT
+}
+
+enum TestimonialFormat {
+  TEXT
+  VOICE
+}
+
+enum TestimonialStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum TestimonialIntention {
+  BEING_HEARD
+  MEET_SIMILAR
+  ADVICE_OR_RESOURCES
+  UNSURE
+}
+
+enum MediaAssetStatus {
+  PENDING_UPLOAD
+  READY
+  DELETED
+}
+
+enum CommentStatus {
+  VISIBLE
+  REMOVED
+}
+
+enum ReportTargetType {
+  TESTIMONIAL
+  COMMENT
+  PROFILE
+}
+
+enum ReportReason {
+  HARASSMENT
+  THREAT
+  SCAM
+  IMPERSONATION
+  PERSONAL_DATA
+  DANGEROUS_CONTENT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ModerationMeasure {
+  WARNING
+  CONTENT_REMOVAL
+  RESTRICTION
+  SUSPENSION
+  EXCLUSION
+}
+
+model User {
+  id                     String        @id @default(uuid())
+  email                  String        @unique
+  passwordHash           String
+  role                   PlatformRole  @default(USER)
+  status                 AccountStatus @default(ACTIVE)
+  birthDate              DateTime      @db.Date
+  emailVerifiedAt        DateTime?
+  termsAcceptedAt        DateTime
+  termsVersion           String
+  anonymityAckAcceptedAt DateTime
+  anonymityAckVersion    String
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  profile           Profile?
+  memberships         CommunityMembership[]
+  testimonials        Testimonial[]
+  mediaAssets         MediaAsset[]
+  comments            Comment[]
+  blocksInitiated     UserBlock[]             @relation("BlocksInitiated")
+  blocksReceived      UserBlock[]             @relation("BlocksReceived")
+  reportsFiled        Report[]
+  moderationActions   ModerationAction[]
+  communityProposals  CommunityProposal[]
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  /// Public, unique — un seul compte par pseudonyme.
+  pseudonym String   @unique
+  /// Présentation courte optionnelle (pas d’email / identité réelle).
+  bio       String?
+  /// Clé objet privée éventuelle (avatar) — pas d’URL permanente exposée.
+  avatarKey String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Community {
+  id          String              @id @default(uuid())
+  name        String              @unique
+  description String
+  theme       String
+  rules       String
+  visibility  CommunityVisibility @default(PRIVATE)
+  joinPolicy  CommunityJoinPolicy
+  /// DRAFT jusqu’à publication admin ; contenu métier seulement si ACTIVE.
+  status      CommunityStatus     @default(DRAFT)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  memberships  CommunityMembership[]
+  testimonials Testimonial[]
+}
+
+/// Idée soumise par un membre — l’équipe Éclore crée la communauté si retenue.
+model CommunityProposal {
+  id          String                  @id @default(uuid())
+  proposerId  String
+  name        String
+  rationale   String
+  status      CommunityProposalStatus @default(PENDING)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  proposer User @relation(fields: [proposerId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([proposerId])
+}
+
+/// Une seule ligne par (user, community) : réadhésion = transition de statut.
+/// Accès contenu uniquement si status = ACCEPTED.
+model CommunityMembership {
+  id                  String           @id @default(uuid())
+  userId              String
+  communityId         String
+  role                MembershipRole   @default(MEMBER)
+  status              MembershipStatus
+  /// Dernière demande / réadhésion (appui anti-spam + audit).
+  lastJoinRequestedAt DateTime
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, communityId])
+  @@index([communityId, status])
+  @@index([userId, status])
+}
+
+model MediaAsset {
+  id          String           @id @default(uuid())
+  ownerId     String
+  objectKey   String           @unique
+  contentType String
+  durationMs  Int?
+  byteSize    Int?
+  status      MediaAssetStatus @default(PENDING_UPLOAD)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  testimonial Testimonial?
+}
+
+model Testimonial {
+  id               String                @id @default(uuid())
+  authorId         String
+  communityId      String
+  format           TestimonialFormat
+  status           TestimonialStatus     @default(DRAFT)
+  intention        TestimonialIntention?
+  body             String?
+  mediaId          String?               @unique
+  /// L’auteur choisit si les réponses sont ouvertes (défaut : oui).
+  commentsEnabled  Boolean               @default(true)
+  publishedAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  media     MediaAsset? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  comments  Comment[]
+
+  @@index([communityId, status, publishedAt])
+  @@index([authorId, status])
+}
+
+model Comment {
+  id            String        @id @default(uuid())
+  testimonialId String
+  authorId      String
+  body          String
+  status        CommentStatus @default(VISIBLE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  testimonial Testimonial @relation(fields: [testimonialId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([testimonialId, createdAt])
+}
+
+model UserBlock {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlocksInitiated", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model Report {
+  id         String           @id @default(uuid())
+  reporterId String
+  targetType ReportTargetType
+  targetId   String
+  reason     ReportReason
+  status     ReportStatus     @default(OPEN)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  reporter         User              @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  moderationAction ModerationAction?
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+model ModerationAction {
+  id          String            @id @default(uuid())
+  moderatorId String
+  reportId    String?           @unique
+  measure     ModerationMeasure
+  reason      String
+  createdAt   DateTime          @default(now())
+
+  moderator User    @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+  report    Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+}

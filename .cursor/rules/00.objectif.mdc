@@ -1,0 +1,1110 @@
+---
+alwaysApply: true
+---
+
+# ÉCLORE — Document de cadrage fonctionnel et technique
+
+**Version :** 1.0 — Document de référence initial  
+**Type de produit :** Application mobile communautaire de témoignage, d'écoute et de soutien entre adultes  
+**Public cible :** Personnes âgées de 18 ans et plus  
+**Langue initiale :** Français  
+**Zone de lancement envisagée :** France  
+**Statut :** Concept à cadrer, MVP à concevoir et à développer progressivement
+
+---
+
+# 1. Instructions générales pour l'assistant de développement
+
+Tu participes à la conception et au développement d'Éclore, une application mobile qui permet à des adultes de partager anonymement des expériences personnelles difficiles, de témoigner par écrit ou par la voix et de trouver une écoute bienveillante auprès de personnes qui peuvent comprendre ce qu'ils vivent.
+
+Ce projet ne doit pas être traité comme un réseau social classique.
+
+La priorité n'est pas de maximiser le temps passé dans l'application, le nombre de publications, les réactions ou la viralité. La priorité est de créer un environnement dans lequel les utilisateurs peuvent s'exprimer librement, préserver leur vie privée, se sentir écoutés et interagir sans subir de pression ni craindre l'exploitation de leur vulnérabilité.
+
+## Consignes à respecter pendant le développement
+
+- Respecter la vision produit et les principes de sécurité décrits dans ce document.
+- Privilégier une architecture modulaire, lisible, maintenable et suffisamment simple pour un développeur indépendant.
+- Ne pas introduire de microservices prématurément.
+- Ne pas ajouter des fonctionnalités non prévues sans expliquer leur utilité et leur impact.
+- Ne pas considérer qu'une fonctionnalité est sûre simplement parce qu'elle fonctionne techniquement.
+- Ne jamais promettre un anonymat absolu, une confidentialité absolue ou une impossibilité totale de capturer un contenu.
+- Ne jamais inventer un mécanisme cryptographique. Utiliser des bibliothèques et protocoles éprouvés.
+- Ne pas coder de mécanismes de modération ou de vérification uniquement côté client.
+- Séparer les fonctionnalités indispensables au MVP des évolutions futures.
+- Avant de modifier une architecture existante, examiner le code et les conventions déjà en place.
+- Ne pas réécrire arbitrairement les fichiers existants.
+- Expliquer les décisions techniques importantes et leurs compromis.
+- En cas d'ambiguïté concernant une règle métier, poser une question avant de prendre une décision structurante.
+- Ne pas supposer que les obligations juridiques sont satisfaites simplement parce qu'une fonctionnalité est implémentée.
+
+Le présent document constitue la référence produit initiale. Il ne signifie pas que toutes les fonctionnalités doivent être développées immédiatement.
+
+---
+
+# 2. Vision et raison d'être d'Éclore
+
+Éclore est une application destinée aux adultes qui souhaitent parler de ce qu'ils ont vécu, de leurs difficultés personnelles ou de leurs émotions, sans nécessairement révéler leur identité à leur entourage.
+
+Certaines personnes traversent des événements difficiles et ne savent pas à qui en parler. Elles peuvent avoir peur du jugement, de la honte, des conséquences dans leur vie familiale ou professionnelle, de la diffusion de leur histoire ou de l'incompréhension de leurs proches.
+
+Éclore doit leur proposer un espace où elles peuvent commencer à parler à leur rythme.
+
+Le nom « Éclore » évoque le fait de sortir progressivement du silence, de retrouver une possibilité d'expression et, éventuellement, de commencer un nouveau chapitre.
+
+### Promesse du produit
+
+Permettre à chaque utilisateur de partager ce qu'il souhaite, avec le niveau de discrétion qu'il choisit, et de recevoir une écoute respectueuse sans être obligé de raconter davantage qu'il ne le souhaite.
+
+### Principes fondamentaux
+
+1. **Liberté de parole :** chacun peut choisir ses mots, son format et son rythme.
+2. **Anonymat public :** l'identité réelle n'est pas affichée publiquement.
+3. **Consentement :** les interactions, notamment privées, doivent respecter le choix de chaque personne.
+4. **Confidentialité :** les témoignages ne doivent pas être exposés inutilement.
+5. **Bienveillance :** les utilisateurs ne sont pas là pour être jugés, humiliés ou ridiculisés.
+6. **Protection :** les comportements abusifs, les escroqueries et l'exploitation de la vulnérabilité doivent être combattus.
+7. **Autonomie :** l'utilisateur conserve le contrôle sur ce qu'il partage et sur les interactions qu'il accepte.
+8. **Honnêteté :** l'application doit expliquer clairement ses limites techniques et ses pratiques de protection.
+9. **Accessibilité émotionnelle :** il doit être possible de témoigner sans savoir exactement quoi dire ni ce que l'on attend en retour.
+10. **Absence de compétition :** la souffrance n'est ni un contenu de divertissement ni un moyen de gagner en popularité.
+
+---
+
+# 3. Public cible et limites du service
+
+## Public exclusivement majeur
+
+Éclore est destinée aux personnes âgées de **18 ans et plus**.
+
+L'application ne doit pas être conçue comme un service destiné aux mineurs. Le parcours d'inscription doit inclure une déclaration d'âge et les mesures de contrôle adaptées au niveau de risque et aux obligations applicables.
+
+Une simple case à cocher ne garantit pas qu'une personne est réellement majeure. Les éventuels mécanismes supplémentaires de vérification devront être proportionnés, respectueux de la vie privée et définis avant le lancement public.
+
+## Personnes susceptibles d'utiliser Éclore
+
+Le produit peut intéresser des adultes souhaitant évoquer notamment :
+
+- Des expériences personnelles douloureuses.
+- Des ruptures et des difficultés relationnelles.
+- Des conflits familiaux.
+- Des situations de solitude ou d'isolement.
+- Des difficultés professionnelles.
+- Des expériences de rejet, de honte ou de culpabilité.
+- Des événements traumatisants.
+- Des difficultés personnelles dont ils ne souhaitent pas parler à leur entourage.
+- Des expériences similaires à celles d'autres membres.
+
+Ces exemples ne constituent pas une liste exhaustive de catégories obligatoires. Les thèmes seront organisés progressivement en fonction des besoins constatés.
+
+## Limites du service
+
+Éclore est un espace de témoignage et de soutien entre adultes. Ce n'est pas, par défaut :
+
+- Un service d'urgence.
+- Un service médical.
+- Un cabinet de psychologie.
+- Une plateforme de diagnostic ou de traitement.
+- Un service juridique.
+- Une garantie de mise en relation avec un professionnel qualifié.
+
+L'application peut faciliter l'accès à des ressources d'aide fiables. Elle ne doit pas présenter les membres ordinaires comme des thérapeutes ou des professionnels.
+
+Les situations de danger immédiat doivent être traitées avec des messages et des orientations adaptés, sans laisser croire que la plateforme peut intervenir comme un service d'urgence.
+
+---
+
+# 4. Expérience centrale : témoigner librement
+
+La fonctionnalité principale d'Éclore est l'espace de témoignage.
+
+L'utilisateur doit pouvoir partager son histoire sans devoir rédiger un texte parfait, se justifier ou donner davantage de détails qu'il ne le souhaite.
+
+Deux formats sont proposés : le vocal et l'écrit.
+
+## 4.1. Témoignage vocal
+
+L'utilisateur peut enregistrer un message vocal d'une durée maximale de **3 minutes**.
+
+Les trois minutes constituent une limite maximale, et non une durée obligatoire.
+
+Le parcours doit permettre :
+
+1. De démarrer un enregistrement.
+2. De visualiser la progression et la durée.
+3. De mettre fin à l'enregistrement.
+4. D'écouter le résultat avant publication.
+5. De supprimer l'enregistrement et de recommencer.
+6. De conserver éventuellement un brouillon.
+7. De choisir une communauté de destination.
+8. De définir son intention de partage.
+9. De confirmer la publication.
+
+Le parcours doit être simple et rassurant. Il ne faut pas ajouter d'étapes inutiles qui empêcheraient une personne de s'exprimer.
+
+### Protection des témoignages vocaux
+
+La voix peut permettre de reconnaître une personne, même si son nom n'est pas affiché. Les propos peuvent aussi contenir des noms, des lieux, des détails professionnels ou des informations identifiantes.
+
+Avant le premier enregistrement, afficher une explication compréhensible invitant l'utilisateur à éviter les informations qu'il ne souhaite pas révéler.
+
+L'utilisateur doit pouvoir écouter son vocal avant de le rendre accessible à d'autres personnes.
+
+Ne pas publier automatiquement un enregistrement dès qu'il est terminé.
+
+Ne pas activer le partage public par défaut.
+
+Le format vocal peut faire l'objet d'une fonctionnalité ultérieure de transformation de la voix, mais celle-ci ne doit pas être présentée comme une garantie d'anonymat.
+
+## 4.2. Témoignage écrit
+
+L'utilisateur peut également rédiger un témoignage.
+
+Il doit pouvoir :
+
+- Écrire librement.
+- Modifier son texte avant publication.
+- Relire son contenu.
+- Enregistrer un brouillon si cette fonctionnalité est activée.
+- Choisir sa communauté.
+- Choisir son intention.
+- Publier ou abandonner sa rédaction.
+
+Le format écrit doit rester une option de premier ordre, et non une fonctionnalité secondaire.
+
+Certaines personnes préfèrent écrire parce qu'elles ne souhaitent pas exposer leur voix, ne peuvent pas parler librement dans leur environnement ou ont besoin de temps pour choisir leurs mots.
+
+## 4.3. Intention du témoignage
+
+Avant de publier, l'utilisateur peut indiquer ce qu'il attend des personnes qui découvriront son histoire.
+
+Intentions proposées :
+
+- **J'ai besoin d'être écouté.** L'utilisateur ne demande pas nécessairement de conseils.
+- **J'aimerais rencontrer des personnes qui comprennent.** Il souhaite lire des expériences similaires.
+- **Je cherche des conseils ou des ressources.** Il souhaite recevoir des réponses constructives.
+- **Je ne sais pas encore ce dont j'ai besoin.** Il souhaite simplement pouvoir s'exprimer.
+
+L'intention est une indication sociale qui guide les réponses. Elle ne doit pas être considérée comme une garantie que les autres membres respecteront cette intention.
+
+Elle peut être modifiée si le produit le permet, et l'utilisateur peut supprimer son témoignage.
+
+## 4.4. Brouillons et publication
+
+Les brouillons doivent rester privés et ne pas être visibles par les autres utilisateurs.
+
+La publication doit être une action explicite.
+
+Les contenus abandonnés ou supprimés doivent être traités conformément à une politique de conservation documentée. Il faut définir le comportement des sauvegardes, des pièces jointes et des éventuels éléments conservés pour des raisons légitimes de sécurité ou d'obligations légales.
+
+---
+
+# 5. Communautés thématiques privées
+
+Éclore ne doit pas reposer principalement sur un fil d'actualité public ouvert à tout Internet.
+
+Le principe retenu est celui de communautés thématiques privées, dans lesquelles les personnes peuvent partager leurs témoignages avec un public défini.
+
+## Fonctionnement
+
+Une communauté possède :
+
+- Un nom.
+- Une description.
+- Un thème.
+- Des règles de conduite.
+- Des paramètres de visibilité.
+- Des membres.
+- Des responsables ou modérateurs.
+- Des publications.
+- Un système de signalement.
+
+Les communautés sont organisées autour de sujets ou d'expériences communes.
+
+Le catalogue initial doit rester volontairement limité afin de faciliter la compréhension du produit et la modération.
+
+## Accès aux communautés
+
+L'accès doit être contrôlé.
+
+Selon le type de communauté, il peut être nécessaire de demander à rejoindre le groupe et d'accepter ses règles.
+
+Les publications ne doivent pas être indexées publiquement par les moteurs de recherche.
+
+Un utilisateur non membre ne doit pas pouvoir lire le contenu d'une communauté privée simplement en modifiant une URL ou en appelant directement l'API.
+
+Les permissions doivent être vérifiées côté serveur sur chaque opération concernée.
+
+## Publications et réponses
+
+Les membres autorisés peuvent consulter les témoignages et répondre conformément aux règles de la communauté.
+
+Les réponses doivent favoriser l'écoute, le soutien et le respect.
+
+Il ne faut pas concevoir le système pour favoriser la popularité des témoignages les plus douloureux.
+
+Pour le MVP, privilégier une liste chronologique ou une présentation simple plutôt qu'un algorithme d'engagement complexe.
+
+## Réactions
+
+Des réactions bienveillantes peuvent être proposées, par exemple :
+
+- « Je t'ai lu. »
+- « Merci de nous faire confiance. »
+- « Tu n'es pas seul. »
+
+Ces réactions doivent être conçues comme des signes de présence, pas comme des notes attribuées à la souffrance.
+
+Éviter les classements, les scores de popularité et les mécanismes de compétition entre témoignages.
+
+---
+
+# 6. Identité et anonymat
+
+L'identité publique de l'utilisateur est distincte de son identité de compte.
+
+## Pseudonyme public
+
+Chaque utilisateur possède un pseudonyme affiché dans les communautés et les conversations.
+
+Le pseudonyme ne doit pas obligatoirement correspondre au nom réel.
+
+L'application ne doit pas exposer publiquement par défaut :
+
+- Le nom réel.
+- L'adresse e-mail.
+- Le numéro de téléphone.
+- L'adresse personnelle.
+- La géolocalisation précise.
+- Les coordonnées personnelles récupérées pour des besoins techniques ou de sécurité.
+
+Il faut éviter les fonctionnalités qui permettent de rechercher une personne par numéro de téléphone ou par adresse e-mail.
+
+## Identifiant interne
+
+Le système doit posséder un identifiant interne stable pour gérer les comptes, les relations, les permissions, les signalements et les sanctions.
+
+Cet identifiant n'est pas nécessairement visible par les autres membres.
+
+Il permet de détecter les comportements répétés et d'éviter qu'un utilisateur contourne trop facilement un blocage en changeant simplement de pseudonyme.
+
+## Pseudonymes distincts par communauté
+
+Une évolution intéressante consiste à permettre un pseudonyme différent selon la communauté.
+
+Cette fonctionnalité ne doit être mise en place que si son intérêt est confirmé et si les conséquences sur la modération sont maîtrisées.
+
+Elle ne doit pas empêcher les mécanismes internes de détection des abus.
+
+## Anonymat : limites à expliquer
+
+L'anonymat public ne signifie pas nécessairement que l'opérateur technique ne possède aucune information sur le compte.
+
+Il faut expliquer quelles données sont collectées, pourquoi elles le sont, qui peut y accéder et pendant combien de temps elles sont conservées.
+
+Les utilisateurs doivent aussi être avertis que leurs propos, leur voix ou des détails personnels peuvent parfois révéler leur identité.
+
+---
+
+# 7. Conversations privées
+
+La messagerie privée peut être utile, mais elle constitue aussi un risque important dans une application accueillant des personnes vulnérables.
+
+Elle ne doit donc pas être ouverte sans contrôle.
+
+## Principe de consentement
+
+Un utilisateur ne doit pas pouvoir envoyer librement des messages privés à n'importe quel membre.
+
+Le système doit prévoir une demande de conversation ou un mécanisme équivalent de consentement.
+
+Le destinataire peut accepter ou refuser.
+
+Un refus ne doit pas provoquer de notification intrusive ni obliger la personne à se justifier.
+
+Après acceptation, la conversation peut être ouverte. Le blocage doit permettre d'interrompre les interactions.
+
+## Protections indispensables
+
+- Limiter le spam et les sollicitations massives.
+- Permettre le blocage immédiat.
+- Empêcher les utilisateurs bloqués de continuer à contacter leur cible par les voies normales de l'application.
+- Permettre de signaler une conversation.
+- Prévoir des limites contre la création répétée de comptes abusifs.
+- Détecter les comportements anormaux sans prétendre déduire automatiquement les intentions d'une personne.
+- Ne pas afficher les coordonnées personnelles des membres.
+- Encadrer les sollicitations financières.
+- Interdire les menaces, le harcèlement, le chantage et l'exploitation de la vulnérabilité.
+
+## Confidentialité et chiffrement
+
+La messagerie doit faire l'objet d'une décision technique distincte concernant le chiffrement.
+
+Le chiffrement de bout en bout peut être envisagé pour protéger le contenu des conversations, mais il nécessite une architecture adaptée, une gestion rigoureuse des clés et des choix concernant les sauvegardes et la récupération de compte.
+
+Si le chiffrement de bout en bout est implémenté, le serveur ne doit pas pouvoir lire normalement le contenu des messages chiffrés.
+
+Il faudra alors expliquer comment fonctionne le signalement : par exemple, un utilisateur peut volontairement joindre des messages sélectionnés à son signalement.
+
+Ne jamais prétendre offrir un chiffrement de bout en bout tant que le mécanisme n'a pas été correctement implémenté et vérifié.
+
+Le chiffrement ne supprime pas tous les risques : un destinataire peut copier un message, photographier un écran ou enregistrer un contenu avec un autre appareil.
+
+---
+
+# 8. Protection contre les captures d'écran et les fuites
+
+L'objectif est de réduire autant que raisonnablement possible les risques de diffusion des témoignages.
+
+Il est impossible de garantir techniquement qu'aucun utilisateur ne pourra copier, photographier ou enregistrer un contenu qu'il voit.
+
+## Mesures envisagées
+
+- Utiliser les protections natives disponibles sur Android pour les écrans sensibles lorsque cela est approprié.
+- Étudier les mécanismes disponibles sur iOS, en tenant compte de leurs limites.
+- Détecter certains événements de capture ou d'enregistrement lorsque le système le permet.
+- Éviter le téléchargement direct des contenus privés.
+- Contrôler l'accès aux médias côté serveur.
+- Utiliser des URL temporaires et limitées pour les médias privés lorsque cela convient à l'architecture.
+- Ne pas exposer de fichiers audio par des URL publiques permanentes.
+- Limiter les métadonnées et les informations personnelles intégrées aux fichiers.
+- Évaluer l'intérêt de filigranes discrets pour certains contenus, sans les présenter comme une protection absolue.
+
+Les mécanismes doivent être adaptés à React Native et aux plateformes natives réellement ciblées.
+
+Les limitations doivent être documentées. Ne pas créer une fausse promesse de confidentialité pour rendre le produit plus attractif.
+
+---
+
+# 9. Prévention des abus, escroqueries et manipulations
+
+La prévention des abus fait partie du fonctionnement normal d'Éclore.
+
+L'objectif est de limiter les comportements qui cherchent à exploiter la confiance des membres.
+
+## Risques à anticiper
+
+- Faux comptes et usurpation de pseudonyme.
+- Faux représentants d'associations.
+- Sollicitations financières suspectes.
+- Promesses de guérison ou de résultats garantis.
+- Pressions pour obtenir des informations personnelles.
+- Tentatives de déplacer les conversations vers des canaux externes.
+- Harcèlement et contacts répétés après un refus.
+- Chantage, menaces et manipulation émotionnelle.
+- Spam et démarchage massif.
+- Publication d'informations permettant d'identifier un autre membre.
+- Contournement des blocages.
+- Exploitation sexuelle ou autre exploitation de personnes vulnérables.
+
+## Mesures de prévention
+
+1. Limiter les actions des nouveaux comptes selon le risque.
+2. Contrôler les demandes d'adhésion aux communautés qui le nécessitent.
+3. Encadrer les demandes de conversation privée.
+4. Fournir un blocage simple et immédiat.
+5. Rendre le signalement accessible depuis les publications, profils et conversations.
+6. Prévoir des mesures de suspension et d'exclusion.
+7. Conserver un historique des décisions de modération.
+8. Mettre en place des limites de fréquence pour les actions sensibles.
+9. Détecter les comportements répétitifs et les tentatives de contournement.
+10. Permettre un recours raisonnable contre certaines décisions de modération.
+
+La détection automatisée peut aider à identifier des comportements suspects, mais elle ne doit pas être considérée comme une preuve absolue de mauvaise intention.
+
+---
+
+# 10. Modération et signalements
+
+La modération doit être proportionnée à la taille de la plateforme, mais les outils essentiels doivent exister dès le lancement public.
+
+## Signalements
+
+Un utilisateur doit pouvoir signaler :
+
+- Une publication.
+- Une réponse.
+- Un profil.
+- Une demande de conversation.
+- Un message ou une conversation, dans les limites techniques du modèle de confidentialité retenu.
+- Une association ou un représentant qui se présente comme vérifié.
+
+Le formulaire doit proposer quelques motifs compréhensibles : harcèlement, menace, escroquerie, usurpation, divulgation de données personnelles, contenu dangereux ou autre problème.
+
+Il ne doit pas être nécessaire de rédiger une longue explication pour signaler un contenu.
+
+## Traitement
+
+Les signalements doivent alimenter une file de modération.
+
+Les modérateurs autorisés peuvent examiner les informations nécessaires, prendre une décision et enregistrer la raison de cette décision.
+
+Les mesures possibles incluent :
+
+- Avertissement.
+- Retrait d'un contenu.
+- Restriction temporaire.
+- Suspension.
+- Exclusion.
+- Réexamen d'un badge de vérification.
+
+La sévérité doit tenir compte du type de comportement, de sa gravité et de sa répétition.
+
+Les signalements ne doivent pas déclencher automatiquement une sanction définitive sans évaluation appropriée, sauf mesures conservatoires justifiées par un risque immédiat.
+
+## Contenus privés
+
+Ne pas instaurer une lecture humaine systématique de toutes les conversations privées.
+
+La prévention doit privilégier le consentement, les limites de fréquence, les comportements observables et le signalement volontaire.
+
+Si une fonctionnalité de chiffrement empêche l'accès serveur au contenu, la modération doit respecter cette limite.
+
+## Situations urgentes
+
+Prévoir des procédures adaptées pour les menaces crédibles, les risques immédiats et les contenus susceptibles de relever d'obligations légales particulières.
+
+Ne pas présenter l'application comme un service d'urgence. Préparer les messages d'orientation vers les ressources appropriées en France et les procédures internes nécessaires.
+
+Les procédures exactes devront être définies avec un conseil adapté avant le lancement public.
+
+---
+
+# 11. Associations et organismes partenaires
+
+Les associations officielles peuvent apporter une aide précieuse aux utilisateurs. Toutefois, leur présence ne doit pas être une condition du lancement initial.
+
+Cette fonctionnalité constitue une évolution importante du produit.
+
+## Objectif
+
+Permettre à des associations et organismes d'aide de disposer d'un compte professionnel identifiable, avec des représentants autorisés et un domaine d'intervention clairement décrit.
+
+## Vérification de l'organisation
+
+Le processus peut inclure :
+
+- Contrôle de l'existence juridique.
+- Contrôle du nom officiel et des identifiants disponibles.
+- Vérification des coordonnées officielles.
+- Vérification du représentant et de son autorisation.
+- Contrôle des agréments éventuellement revendiqués.
+- Description des missions et des limites de l'accompagnement.
+- Acceptation d'une charte de conduite.
+
+En France, les vérifications doivent tenir compte du régime juridique applicable à l'association et, lorsque c'est pertinent, des particularités de l'Alsace-Moselle.
+
+La vérification doit être réalisée avant l'attribution d'un badge officiel.
+
+## Statuts de confiance distincts
+
+Ne pas confondre l'existence légale d'une association avec un agrément administratif ou une qualification professionnelle.
+
+Exemples de statuts envisageables :
+
+- Organisation dont l'identité a été vérifiée.
+- Représentant rattaché à une organisation vérifiée.
+- Agrément officiel vérifié pour un domaine précis.
+- Qualification professionnelle vérifiée, lorsque cela est pertinent et juridiquement justifié.
+
+Ces statuts ne doivent pas être interchangeables.
+
+## Transparence du badge
+
+En cliquant sur un badge, l'utilisateur doit pouvoir comprendre ce qui a été contrôlé et ce que cette vérification ne garantit pas.
+
+Ne pas afficher un badge suggérant que l'application certifie globalement la qualité, la moralité ou les résultats d'une organisation.
+
+## Prévention de l'usurpation
+
+Le compte officiel doit être administré par des responsables autorisés.
+
+Les intervenants doivent être rattachés à l'organisation et disposer de rôles appropriés.
+
+Une association ne doit pas pouvoir attribuer elle-même un badge vérifié simplement en modifiant son profil.
+
+Le serveur doit contrôler les statuts et conserver l'historique des décisions de vérification.
+
+## Modèle économique et dons
+
+Aucun système de dons ni de sollicitation financière privée ne doit être considéré comme indispensable au MVP.
+
+Si cette fonctionnalité est envisagée ultérieurement, elle devra faire l'objet d'une étude spécifique pour éviter les escroqueries et garantir la transparence.
+
+---
+
+# 12. Protection des données et confidentialité
+
+Éclore peut traiter des informations particulièrement personnelles, y compris des récits relatifs à la santé, aux relations, aux violences ou à d'autres événements sensibles.
+
+La protection des données doit être prise en compte dès la conception.
+
+## Principes
+
+- Collecter uniquement les données nécessaires.
+- Documenter la finalité de chaque donnée.
+- Limiter les accès aux informations sensibles.
+- Définir une durée de conservation pour chaque catégorie de données.
+- Permettre l'exercice des droits applicables.
+- Protéger les données en transit et au repos.
+- Éviter les informations personnelles dans les journaux techniques.
+- Ne pas utiliser les témoignages pour la publicité ciblée.
+- Ne pas revendre les données personnelles.
+- Éviter la géolocalisation précise sans nécessité démontrée.
+- Ne pas exposer les témoignages dans les résultats de recherche publics.
+- Prévoir des procédures de gestion des incidents de sécurité.
+
+## Séparation des données
+
+L'identité de compte, le pseudonyme public et les contenus doivent être organisés de manière à limiter les accès croisés inutiles.
+
+Les administrateurs techniques ne doivent pas obtenir automatiquement un accès illimité aux contenus personnels.
+
+Les accès de support et de modération doivent être encadrés par des permissions, des finalités et une traçabilité appropriées.
+
+## Conservation et suppression
+
+Définir les règles de conservation pour :
+
+- Les comptes.
+- Les témoignages.
+- Les enregistrements audio.
+- Les pièces jointes.
+- Les messages.
+- Les signalements.
+- Les décisions de modération.
+- Les journaux de sécurité.
+- Les sauvegardes.
+
+Ne pas conserver indéfiniment les contenus supprimés sans raison documentée.
+
+Les obligations de conservation, les éventuelles exceptions et les modalités de suppression devront être définies avant la mise en production.
+
+## Cadre juridique
+
+Avant le lancement public en France, examiner notamment les obligations applicables en matière de protection des données, de contenus illicites, de responsabilité des services en ligne, de signalement et de sécurité.
+
+Évaluer les conditions d'utilisation, la politique de confidentialité, les mentions légales, la gestion des cookies ou traceurs éventuels, ainsi que la nécessité d'une analyse d'impact relative à la protection des données.
+
+Le statut exact d'Éclore et les obligations applicables dépendent du fonctionnement réel du service. Ne pas considérer ce document comme un avis juridique.
+
+---
+
+# 13. Parcours utilisateur principal
+
+Le parcours initial doit rester court et compréhensible.
+
+## Inscription
+
+1. L'utilisateur découvre la mission et les limites d'Éclore.
+2. Il confirme qu'il a au moins 18 ans.
+3. Il crée son compte selon le mécanisme d'authentification retenu.
+4. Il choisit un pseudonyme public.
+5. Il accepte les conditions nécessaires à l'utilisation du service.
+6. Il découvre les règles de sécurité et les possibilités de blocage et de signalement.
+
+Ne pas exiger systématiquement le nom réel pour afficher un pseudonyme.
+
+## Découverte
+
+L'utilisateur découvre quelques communautés thématiques.
+
+Chaque communauté présente clairement son objectif, ses règles et ses conditions d'accès.
+
+L'utilisateur peut rejoindre une communauté lorsque les conditions d'adhésion sont satisfaites.
+
+## Témoignage
+
+1. L'utilisateur choisit le vocal ou l'écrit.
+2. Il rédige ou enregistre son histoire.
+3. Il relit ou écoute son contenu.
+4. Il choisit une communauté.
+5. Il indique éventuellement ce qu'il attend des autres.
+6. Il confirme la publication.
+7. Le témoignage devient accessible au public autorisé selon les règles de la communauté et les contrôles de sécurité applicables.
+
+## Réception des réponses
+
+Les membres peuvent répondre conformément aux règles de conduite.
+
+L'auteur peut signaler une réponse, bloquer un utilisateur ou supprimer son témoignage.
+
+Les interactions doivent rester contrôlables par l'auteur.
+
+## Conversations privées
+
+Une demande de conversation peut être envoyée dans les conditions prévues par le produit.
+
+Le destinataire accepte ou refuse.
+
+Les utilisateurs peuvent interrompre les échanges à tout moment.
+
+---
+
+# 14. Périmètre fonctionnel du MVP
+
+Le MVP doit permettre de tester la proposition de valeur sans construire immédiatement une plateforme complète.
+
+## Fonctionnalités prioritaires
+
+1. Inscription et authentification.
+2. Gestion du compte et du pseudonyme.
+3. Confirmation de la majorité.
+4. Consultation des communautés thématiques.
+5. Adhésion aux communautés selon leurs règles.
+6. Publications textuelles.
+7. Enregistrement et publication de vocaux de trois minutes maximum.
+8. Prévisualisation et suppression avant publication.
+9. Réponses aux témoignages.
+10. Intentions de témoignage.
+11. Blocage d'utilisateurs.
+12. Signalement de contenus et de profils.
+13. Outils minimaux de modération.
+14. Contrôle des permissions côté serveur.
+15. Paramètres de confidentialité essentiels.
+16. Suppression du compte et gestion des données selon les règles définies.
+17. Messages d'information sur les limites de confidentialité et les ressources d'aide.
+18. Mesures élémentaires contre le spam et les abus.
+19. Stockage privé des fichiers audio.
+20. Journalisation des événements de sécurité et des actions administratives sensibles.
+
+Le nombre de communautés initiales doit rester limité. Il vaut mieux modérer correctement quelques espaces que lancer un grand catalogue impossible à superviser.
+
+## Fonctionnalités à différer
+
+- Réseau de nombreuses associations partenaires.
+- Certification complexe des organisations.
+- Dons et transactions financières.
+- Appels audio ou vidéo en direct.
+- Recommandations algorithmiques complexes.
+- Fonctionnalités de popularité ou de classement.
+- Changement de voix artificiel.
+- Traduction automatique des témoignages.
+- Analyse avancée des comportements.
+- Messagerie de groupe complexe.
+- Chiffrement de bout en bout, tant que l'architecture et les exigences de sécurité ne sont pas correctement définies.
+- Application web complète si elle n'est pas nécessaire au lancement.
+
+Le report d'une fonctionnalité ne dispense pas d'évaluer les risques et obligations associés à la version réellement mise en production.
+
+---
+
+# 15. Architecture technique envisagée
+
+La stack envisagée est la suivante, sous réserve de validation pendant la conception.
+
+## Application mobile
+
+- React Native.
+- Expo.
+- TypeScript.
+
+Utiliser un development build lorsque les fonctionnalités natives nécessaires ne sont pas correctement prises en charge dans Expo Go.
+
+Les capacités d'enregistrement audio, de lecture et de protection des écrans doivent être vérifiées sur Android et iOS.
+
+## Backend
+
+- Node.js.
+- TypeScript.
+- NestJS.
+- API REST pour les opérations métier.
+- Socket.IO éventuellement pour les fonctionnalités temps réel qui le nécessitent.
+
+Ne pas introduire de communication temps réel partout par défaut. Les publications et opérations ordinaires peuvent utiliser des requêtes REST.
+
+## Base de données
+
+- PostgreSQL.
+- Prisma.
+
+PostgreSQL est la source de vérité pour les comptes, les communautés, les relations, les publications, les permissions et les autres données métier.
+
+Prisma doit être utilisé de manière cohérente, avec des migrations contrôlées et une gestion des transactions lorsque cela est nécessaire.
+
+## Redis
+
+Redis peut servir ultérieurement ou dès que nécessaire pour :
+
+- Les limites de fréquence.
+- Certaines données temporaires.
+- Les files de tâches selon l'architecture retenue.
+- Les mécanismes de coordination temps réel.
+
+Ne pas y stocker une donnée critique uniquement parce que cela paraît plus rapide, sans stratégie de persistance adaptée.
+
+## Stockage audio
+
+Les fichiers audio doivent être stockés dans un stockage objet privé, ou dans une solution équivalente adaptée au déploiement.
+
+Le stockage ne doit pas être directement public.
+
+L'API doit vérifier les autorisations avant de fournir un accès aux fichiers.
+
+## Déploiement
+
+Docker peut être utilisé pour rendre l'environnement reproductible.
+
+Coolify est une option envisagée pour le déploiement, en fonction de l'infrastructure disponible.
+
+Prévoir sauvegardes, supervision, gestion des secrets, migrations, journalisation et procédure de restauration.
+
+## Architecture logicielle
+
+Privilégier un **monolithe modulaire NestJS**.
+
+Les modules peuvent être organisés autour des responsabilités suivantes :
+
+- Auth.
+- Users et Profiles.
+- Communities.
+- Memberships.
+- Testimonials ou Posts.
+- Comments.
+- Media.
+- Conversations.
+- Messages.
+- Reports.
+- Moderation.
+- OrganizationVerification, à une étape ultérieure.
+- Notifications.
+- Privacy.
+- Administration.
+
+Cette liste est une proposition de découpage logique, pas une obligation de créer immédiatement tous les modules.
+
+Chaque module doit avoir des responsabilités claires. Éviter les dépendances circulaires, les contrôleurs surchargés et les services qui regroupent des domaines métier sans rapport.
+
+Les règles de sécurité doivent être centralisées et testées, plutôt que reproduites de façon incohérente dans chaque endpoint.
+
+---
+
+# 16. Sécurité et autorisations
+
+La sécurité doit être traitée comme une exigence métier.
+
+## Contrôle d'accès
+
+Le backend doit vérifier notamment :
+
+- Que l'utilisateur est authentifié lorsqu'une action le nécessite.
+- Que son compte est autorisé à effectuer l'action.
+- Qu'il est membre de la communauté lorsque cela est nécessaire.
+- Que la publication appartient au périmètre auquel il peut accéder.
+- Que le destinataire a accepté une conversation privée lorsque cette règle s'applique.
+- Qu'un utilisateur bloqué ne peut pas contourner le blocage par les opérations normales.
+- Que seuls les modérateurs autorisés accèdent aux outils de modération.
+- Que seuls les administrateurs habilités modifient les statuts de vérification.
+
+Ne pas faire confiance aux identifiants ou aux rôles envoyés par le client.
+
+## Protection de l'API
+
+Prévoir des mesures adaptées pour :
+
+- La validation des entrées.
+- La limitation de fréquence.
+- La prévention des accès directs non autorisés aux ressources.
+- La gestion des sessions et des jetons.
+- La rotation ou révocation des jetons selon le mécanisme retenu.
+- La protection contre les abus de fichiers et de médias.
+- La gestion des erreurs sans fuite d'informations sensibles.
+- La prévention des injections et des erreurs de contrôle d'accès.
+- La protection des secrets et des environnements.
+- La traçabilité des opérations administratives sensibles.
+
+## Tests
+
+Les tests doivent couvrir les règles métier critiques et les cas d'accès interdits, pas uniquement les scénarios de succès.
+
+Exemples :
+
+- Un non-membre ne peut pas lire les témoignages d'une communauté privée.
+- Un utilisateur ne peut pas modifier un témoignage qui ne lui appartient pas.
+- Un utilisateur bloqué ne peut pas continuer à envoyer des demandes de conversation par une autre route de l'API.
+- Un utilisateur ordinaire ne peut pas attribuer un badge officiel.
+- Un membre ne peut pas accéder aux médias privés d'un autre utilisateur sans autorisation.
+- Un utilisateur suspendu ne peut pas contourner sa suspension par une simple modification du client.
+
+---
+
+# 17. Principes UX et identité visuelle
+
+L'application doit être rassurante, sobre, chaleureuse et discrète.
+
+Elle ne doit pas donner l'impression d'une plateforme médicale froide ni d'un réseau social conçu pour susciter l'addiction.
+
+## Direction visuelle
+
+Pistes à explorer :
+
+- Couleurs douces et apaisantes.
+- Contraste suffisant pour l'accessibilité.
+- Interface peu chargée.
+- Typographie lisible.
+- Animations discrètes.
+- Navigation simple.
+- Formulaires courts.
+- Messages d'erreur compréhensibles.
+- États de chargement et de sauvegarde explicites.
+
+Le nom Éclore peut inspirer une identité visuelle évoquant l'ouverture, la lumière, la croissance ou le passage progressif du silence à la parole.
+
+Éviter une identité infantile ou trop institutionnelle.
+
+## Ton éditorial
+
+Le langage doit être humain, simple, non culpabilisant et non moralisateur.
+
+Éviter les injonctions telles que « Raconte tout », « Tu dois en parler » ou « Il faut tourner la page ».
+
+Préférer des formulations comme :
+
+- « Tu peux parler à ton rythme. »
+- « Tu choisis ce que tu souhaites partager. »
+- « Tu n'es pas obligé de répondre. »
+- « Tu peux modifier ou supprimer ton témoignage. »
+- « Tu peux demander à être écouté sans recevoir de conseils. »
+
+Ne pas promettre que chaque utilisateur trouvera de l'aide ou que chaque témoignage recevra une réponse.
+
+---
+
+# 18. Notifications
+
+Les notifications doivent être discrètes, paramétrables et respectueuses de la confidentialité.
+
+Éviter de révéler le contenu d'un témoignage ou d'une conversation sur l'écran verrouillé.
+
+Proposer des notifications génériques, par exemple « Tu as une nouvelle interaction sur Éclore », plutôt que d'afficher le thème sensible ou le texte d'un message.
+
+L'utilisateur doit pouvoir désactiver certaines catégories de notifications.
+
+Ne pas utiliser les notifications pour pousser les utilisateurs à consulter constamment des témoignages douloureux.
+
+---
+
+# 19. Administration et gestion de la plateforme
+
+Même avec un petit nombre d'utilisateurs, une interface d'administration sécurisée peut être nécessaire.
+
+Les fonctionnalités administratives doivent être limitées aux besoins réels du MVP.
+
+Elles peuvent inclure :
+
+- Consultation de la file des signalements.
+- Examen des contenus signalés dans les limites des accès autorisés.
+- Prise de décision de modération.
+- Suspension et réactivation de comptes.
+- Gestion des communautés.
+- Gestion des règles de conduite.
+- Consultation de l'historique des décisions.
+- Gestion des demandes relatives aux comptes et aux données personnelles.
+
+L'accès administratif doit être protégé, avec des rôles distincts et une traçabilité adaptée.
+
+Ne pas fournir un accès global aux contenus personnels à toute personne disposant d'un rôle d'administration technique.
+
+Les futures fonctionnalités de gestion des associations doivent être séparées des outils de modération ordinaires.
+
+---
+
+# 20. Modèle métier initial à explorer
+
+Le modèle de données doit être conçu après validation des règles métier. Les entités suivantes sont des pistes, pas un schéma définitif.
+
+## Entités possibles
+
+### User
+
+Représente un compte utilisateur.
+
+Contient les informations d'authentification nécessaires, le statut du compte, les paramètres de sécurité et les informations de cycle de vie.
+
+### Profile
+
+Contient les informations publiques du profil, notamment le pseudonyme.
+
+Séparer les informations publiques des données de compte lorsque cela facilite la protection et le contrôle d'accès.
+
+### Community
+
+Représente une communauté thématique, sa description, son statut et ses paramètres de visibilité.
+
+### CommunityMembership
+
+Représente l'appartenance d'un utilisateur à une communauté, ainsi que son statut et son rôle éventuel.
+
+### Testimonial
+
+Représente un témoignage écrit ou vocal, son auteur, sa communauté, son intention, son statut et ses dates importantes.
+
+### MediaAsset
+
+Représente un fichier audio ou un autre média autorisé. Contient les métadonnées nécessaires sans exposer le chemin de stockage privé.
+
+### Comment
+
+Représente une réponse à un témoignage, avec les contrôles d'accès appropriés.
+
+### UserBlock
+
+Représente une relation de blocage entre utilisateurs.
+
+### Report
+
+Représente un signalement, son motif, son statut et les références aux éléments concernés.
+
+### ModerationAction
+
+Représente une décision de modération, son auteur, sa justification et sa date.
+
+### Conversation et Message
+
+À définir selon le modèle de messagerie retenu, notamment les demandes de conversation et les conditions d'acceptation.
+
+### Notification
+
+Représente une notification destinée à un utilisateur, avec des paramètres de confidentialité.
+
+Les entités Organization, OrganizationMembership, VerificationCase et OrganizationCredential peuvent être ajoutées lorsque le programme de vérification des associations est réellement planifié.
+
+Ne pas figer prématurément les relations, les champs et les enums avant d'avoir défini les règles de suppression, les permissions et les contraintes de confidentialité.
+
+---
+
+# 21. Critères de réussite du MVP
+
+Le succès initial ne doit pas être évalué uniquement par le nombre de comptes créés ou de témoignages publiés.
+
+Les indicateurs à étudier peuvent inclure :
+
+- Les utilisateurs arrivent-ils à comprendre le concept ?
+- Peuvent-ils témoigner sans difficulté technique ?
+- Comprennent-ils les options de visibilité ?
+- Se sentent-ils suffisamment en confiance pour utiliser le service ?
+- Les communautés sont-elles suffisamment bien modérées ?
+- Les signalements peuvent-ils être traités ?
+- Les mécanismes de blocage fonctionnent-ils correctement ?
+- Les utilisateurs comprennent-ils les limites de l'anonymat ?
+- Les témoignages obtiennent-ils des réponses respectueuses ?
+- Le produit reste-t-il utilisable sans inciter à la consommation compulsive de contenus douloureux ?
+
+Ne pas collecter davantage de données sensibles uniquement pour mesurer ces indicateurs.
+
+Les retours qualitatifs et les tests utilisateurs peuvent être plus utiles que des métriques d'engagement complexes.
+
+---
+
+# 22. Feuille de route proposée
+
+## Phase 0 — Cadrage
+
+- Valider les parcours utilisateurs.
+- Définir les communautés initiales.
+- Définir les règles de visibilité et d'accès.
+- Définir le traitement des signalements.
+- Évaluer les risques et obligations avant l'ouverture au public.
+- Définir les besoins d'authentification et de stockage.
+- Préciser les exigences de confidentialité.
+
+## Phase 1 — Socle technique
+
+- Créer le projet mobile.
+- Créer le backend NestJS.
+- Configurer PostgreSQL et Prisma.
+- Mettre en place l'authentification.
+- Définir les conventions de code.
+- Préparer la gestion des erreurs, les logs et les tests.
+- Mettre en place les premiers contrôles d'accès.
+
+## Phase 2 — Témoignages
+
+- Créer les communautés.
+- Gérer les adhésions.
+- Implémenter les témoignages écrits.
+- Implémenter l'enregistrement audio.
+- Gérer les brouillons et la prévisualisation.
+- Implémenter le stockage privé des médias.
+- Contrôler les autorisations d'accès.
+
+## Phase 3 — Interactions et protection
+
+- Implémenter les commentaires.
+- Ajouter les intentions de témoignage.
+- Implémenter le blocage.
+- Implémenter les signalements.
+- Construire les outils essentiels de modération.
+- Ajouter les protections contre le spam.
+- Tester les scénarios d'accès interdit.
+
+## Phase 4 — Tests et lancement contrôlé
+
+- Tester les parcours sur les plateformes mobiles ciblées.
+- Tester les mécanismes de sécurité.
+- Vérifier les politiques de confidentialité et les documents juridiques nécessaires.
+- Préparer les procédures de support et de modération.
+- Organiser un test avec un groupe limité d'adultes.
+- Recueillir les retours et corriger les problèmes avant l'ouverture publique.
+
+## Phase 5 — Évolutions
+
+Selon les besoins réels :
+
+- Messagerie privée plus complète.
+- Programme de vérification des associations.
+- Profils professionnels.
+- Ressources d'aide officielles.
+- Fonctions avancées de confidentialité.
+- Améliorations de modération.
+- Éventuelles fonctionnalités de chiffrement de bout en bout après conception spécifique.
+
+---
+
+# 23. Décisions encore ouvertes
+
+Ne pas considérer les points suivants comme déjà définitivement décidés :
+
+1. Mécanisme exact de vérification de la majorité.
+2. Mode d'authentification et données nécessaires à la création du compte.
+3. Règles exactes de création et d'adhésion aux communautés.
+4. Durée de conservation des vocaux, témoignages et messages.
+5. Modèle de messagerie privée.
+6. Niveau et méthode de chiffrement des conversations.
+7. Politique de modération des contenus publiés.
+8. Fonctionnement des signalements concernant les conversations privées.
+9. Capacités exactes de protection contre les captures sur Android et iOS.
+10. Mécanismes de récupération et de suppression des comptes.
+11. Modalités de gestion des situations urgentes.
+12. Documents et procédures juridiques requis avant le lancement public.
+13. Politique future de vérification des associations.
+14. Modèle économique éventuel.
+
+Pour toute décision ayant un impact important sur la confidentialité, la sécurité ou les obligations juridiques, présenter les options, les avantages, les inconvénients et les risques avant de choisir.
+
+---
+
+# 24. Instruction finale pour Cursor
+
+Avant de commencer à coder, analyse ce document et propose un plan de réalisation du MVP découpé en étapes petites, cohérentes et testables.
+
+Pour chaque étape, précise :
+
+- L'objectif métier.
+- Les fonctionnalités concernées.
+- Les modifications de schéma éventuelles.
+- Les endpoints nécessaires.
+- Les permissions et contrôles de sécurité.
+- Les tests unitaires et d'intégration.
+- Les risques particuliers.
+- Les critères permettant de considérer l'étape terminée.
+
+Commence par le socle et les règles métier indispensables. Ne développe pas toutes les phases en une seule fois.
+
+Ne crée pas immédiatement l'ensemble des entités évoquées si elles ne sont pas nécessaires à la première étape.
+
+Ne remplace pas les exigences de confidentialité et de sécurité par de simples commentaires dans le code.
+
+Lorsque tu proposes une implémentation, veille à ce que le comportement réel du système corresponde à la promesse faite aux utilisateurs.
+
+**La règle centrale du projet est la suivante : Éclore doit permettre aux adultes de parler à leur rythme, sous pseudonyme, dans un espace de soutien respectueux, tout en réduisant les risques d'exposition, de jugement et d'exploitation de leur vulnérabilité.**

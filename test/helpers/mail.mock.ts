@@ -1,0 +1,1 @@
+export { createMockMailService as mockMailService } from '../../src/test/mocks/mail.mock.js';
