@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+.git
+.cursor
+.vscode
+*.md
+.env
+.env.*
+!.env.example
+test
+**/__mocks__
+**/*.spec.ts
+agent-transcripts
+terminals

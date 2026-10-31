@@ -15,9 +15,9 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  describe('GET /health', () => {
+    it('retourne status ok (route publique pour Coolify / Docker)', () => {
+      expect(appController.getHealth()).toEqual({ status: 'ok' });
     });
   });
 });
