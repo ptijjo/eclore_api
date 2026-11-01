@@ -106,6 +106,7 @@ describe('CommunityProposalsController', () => {
   const proposalsService = {
     create: mockFn(),
     listForAdmin: mockFn(),
+    decide: mockFn(),
   };
 
   beforeEach(async () => {
@@ -143,6 +144,14 @@ describe('CommunityProposalsController', () => {
     expect(proposalsService.create).toHaveBeenCalledWith('u1', {
       name: 'Deuil',
       rationale: 'Espace pour partager sans jugement.',
+    });
+  });
+
+  it('délègue decide proposition', async () => {
+    proposalsService.decide.mockResolvedValue({ id: 'p1', status: 'ACCEPTED' });
+    await controller.decide('p1', { decision: 'ACCEPTED' });
+    expect(proposalsService.decide).toHaveBeenCalledWith('p1', {
+      decision: 'ACCEPTED',
     });
   });
 });

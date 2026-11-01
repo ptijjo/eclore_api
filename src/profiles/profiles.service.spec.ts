@@ -19,15 +19,26 @@ describe('ProfilesService', () => {
     service = new ProfilesService(prisma as never);
   });
 
-  it('retourne mon profil', async () => {
-    const row = {
+  it('retourne mon profil avec role et status compte', async () => {
+    prisma.profile.findUnique.mockResolvedValue({
       id: 'p1',
       userId: 'u1',
       pseudonym: 'lune_verte',
       bio: 'Hello',
-    };
-    prisma.profile.findUnique.mockResolvedValue(row);
-    await expect(service.getMine('u1')).resolves.toEqual(row);
+      avatarKey: null,
+      updatedAt: new Date('2026-01-01'),
+      user: { role: 'ADMIN', status: 'ACTIVE' },
+    });
+    await expect(service.getMine('u1')).resolves.toEqual({
+      id: 'p1',
+      userId: 'u1',
+      pseudonym: 'lune_verte',
+      bio: 'Hello',
+      avatarKey: null,
+      updatedAt: new Date('2026-01-01'),
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    });
   });
 
   it('404 si profil absent', async () => {
@@ -42,19 +53,31 @@ describe('ProfilesService', () => {
       id: 'p1',
       pseudonym: 'old_name',
     });
-    const updated = {
+    prisma.profile.update.mockResolvedValue({
       id: 'p1',
+      userId: 'u1',
       pseudonym: 'new_name',
       bio: 'Une courte présentation',
-    };
-    prisma.profile.update.mockResolvedValue(updated);
+      avatarKey: null,
+      updatedAt: new Date('2026-01-01'),
+      user: { role: 'USER', status: 'ACTIVE' },
+    });
 
     await expect(
       service.updateMine('u1', {
         pseudonym: 'new_name',
         bio: 'Une courte présentation',
       }),
-    ).resolves.toEqual(updated);
+    ).resolves.toEqual({
+      id: 'p1',
+      userId: 'u1',
+      pseudonym: 'new_name',
+      bio: 'Une courte présentation',
+      avatarKey: null,
+      updatedAt: new Date('2026-01-01'),
+      role: 'USER',
+      status: 'ACTIVE',
+    });
   });
 
   it('refuse un pseudonyme déjà pris (409)', async () => {

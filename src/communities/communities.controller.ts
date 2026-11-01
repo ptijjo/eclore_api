@@ -12,6 +12,7 @@ import { CommunityProposalsService } from './community-proposals.service.js';
 import { AssignResponsibleDto } from './dto/assign-responsible.dto.js';
 import { CreateCommunityDto } from './dto/create-community.dto.js';
 import { CreateCommunityProposalDto } from './dto/create-community-proposal.dto.js';
+import { DecideCommunityProposalDto } from './dto/decide-community-proposal.dto.js';
 import { UpdateCommunityStatusDto } from './dto/update-community-status.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ActiveAccountGuard } from '../common/guards/active-account.guard.js';
@@ -99,5 +100,15 @@ export class CommunityProposalsController {
   @UseGuards(RolesGuard)
   listForAdmin() {
     return this.proposalsService.listForAdmin();
+  }
+
+  @Patch(':id')
+  @Roles('ADMIN')
+  @UseGuards(RolesGuard)
+  decide(
+    @Param('id') id: string,
+    @Body() dto: DecideCommunityProposalDto,
+  ) {
+    return this.proposalsService.decide(id, dto);
   }
 }

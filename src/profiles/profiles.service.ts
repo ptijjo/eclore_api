@@ -14,7 +14,37 @@ const profileSelect = {
   bio: true,
   avatarKey: true,
   updatedAt: true,
+  user: {
+    select: {
+      role: true,
+      status: true,
+    },
+  },
 } as const;
+
+function mapProfile(
+  profile: {
+    id: string;
+    userId: string;
+    pseudonym: string;
+    bio: string | null;
+    avatarKey: string | null;
+    updatedAt: Date;
+    user: { role: string; status: string };
+  },
+) {
+  // Exposer role/status plateforme pour l’UI (garde admin) — jamais l’email ici.
+  return {
+    id: profile.id,
+    userId: profile.userId,
+    pseudonym: profile.pseudonym,
+    bio: profile.bio,
+    avatarKey: profile.avatarKey,
+    updatedAt: profile.updatedAt,
+    role: profile.user.role,
+    status: profile.user.status,
+  };
+}
 
 @Injectable()
 export class ProfilesService {
@@ -28,7 +58,7 @@ export class ProfilesService {
     if (!profile) {
       throw new NotFoundException();
     }
-    return profile;
+    return mapProfile(profile);
   }
 
   /**
@@ -58,11 +88,12 @@ export class ProfilesService {
     }
 
     try {
-      return await this.prisma.profile.update({
+      const updated = await this.prisma.profile.update({
         where: { userId },
         data,
         select: profileSelect,
       });
+      return mapProfile(updated);
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

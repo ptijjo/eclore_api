@@ -30,7 +30,19 @@ export type MockPrismaService = {
   };
   communityProposal: {
     create: ReturnType<typeof mockFn>;
+    findUnique: ReturnType<typeof mockFn>;
     findMany: ReturnType<typeof mockFn>;
+    update: ReturnType<typeof mockFn>;
+  };
+  notification: {
+    createMany: ReturnType<typeof mockFn>;
+    findMany: ReturnType<typeof mockFn>;
+    updateMany: ReturnType<typeof mockFn>;
+  };
+  devicePushToken: {
+    upsert: ReturnType<typeof mockFn>;
+    findMany: ReturnType<typeof mockFn>;
+    deleteMany: ReturnType<typeof mockFn>;
   };
   testimonial: {
     findUnique: ReturnType<typeof mockFn>;
@@ -38,6 +50,23 @@ export type MockPrismaService = {
     create: ReturnType<typeof mockFn>;
     update: ReturnType<typeof mockFn>;
     delete: ReturnType<typeof mockFn>;
+    deleteMany: ReturnType<typeof mockFn>;
+  };
+  comment: {
+    findUnique: ReturnType<typeof mockFn>;
+    update: ReturnType<typeof mockFn>;
+    updateMany: ReturnType<typeof mockFn>;
+  };
+  report: {
+    findFirst: ReturnType<typeof mockFn>;
+    findUnique: ReturnType<typeof mockFn>;
+    findUniqueOrThrow: ReturnType<typeof mockFn>;
+    findMany: ReturnType<typeof mockFn>;
+    create: ReturnType<typeof mockFn>;
+    update: ReturnType<typeof mockFn>;
+  };
+  moderationAction: {
+    create: ReturnType<typeof mockFn>;
   };
   mediaAsset: {
     findUnique: ReturnType<typeof mockFn>;
@@ -77,7 +106,19 @@ export function createMockPrismaService(): MockPrismaService {
     },
     communityProposal: {
       create: mockFn(),
+      findUnique: mockFn(),
       findMany: mockFn(),
+      update: mockFn(),
+    },
+    notification: {
+      createMany: mockFn(),
+      findMany: mockFn(),
+      updateMany: mockFn(),
+    },
+    devicePushToken: {
+      upsert: mockFn(),
+      findMany: mockFn(),
+      deleteMany: mockFn(),
     },
     testimonial: {
       findUnique: mockFn(),
@@ -85,6 +126,23 @@ export function createMockPrismaService(): MockPrismaService {
       create: mockFn(),
       update: mockFn(),
       delete: mockFn(),
+      deleteMany: mockFn(),
+    },
+    comment: {
+      findUnique: mockFn(),
+      update: mockFn(),
+      updateMany: mockFn(),
+    },
+    report: {
+      findFirst: mockFn(),
+      findUnique: mockFn(),
+      findUniqueOrThrow: mockFn(),
+      findMany: mockFn(),
+      create: mockFn(),
+      update: mockFn(),
+    },
+    moderationAction: {
+      create: mockFn(),
     },
     mediaAsset: {
       findUnique: mockFn(),

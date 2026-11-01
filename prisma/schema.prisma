@@ -118,6 +118,18 @@ enum ModerationMeasure {
   EXCLUSION
 }
 
+/// Types de notifications in-app (+ push Expo).
+enum NotificationType {
+  COMMUNITY_PROPOSAL
+  CONTENT_REPORT
+}
+
+enum PushPlatform {
+  ANDROID
+  IOS
+  WEB
+}
+
 model User {
   id                     String        @id @default(uuid())
   email                  String        @unique
@@ -140,9 +152,45 @@ model User {
   comments            Comment[]
   blocksInitiated     UserBlock[]             @relation("BlocksInitiated")
   blocksReceived      UserBlock[]             @relation("BlocksReceived")
-  reportsFiled        Report[]
-  moderationActions   ModerationAction[]
-  communityProposals  CommunityProposal[]
+  reportsFiled             Report[]
+  moderationActions        ModerationAction[]            @relation("ModerationActionsTaken")
+  moderationSubjects       ModerationAction[]            @relation("ModerationSubjects")
+  communityProposals       CommunityProposal[]
+  notifications            Notification[]
+  pushTokens               DevicePushToken[]
+}
+
+/// Token Expo Push — permet d’alerter hors app (écran verrouillé).
+model DevicePushToken {
+  id        String       @id @default(uuid())
+  userId    String
+  /// ExponentPushToken[...] — unique globalement (un appareil = un user courant).
+  token     String       @unique
+  platform  PushPlatform
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Inbox in-app — destinataire = userId (souvent ADMIN pour les propositions).
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  /// Métadonnées UI (ex. { proposalId }) — pas de PII sensible.
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
 }
 
 model Profile {
@@ -280,31 +328,56 @@ model UserBlock {
   @@index([blockedId])
 }
 
+/// Signalement — snapshot figé à la création pour la file de modération (PII admin only).
 model Report {
   id         String           @id @default(uuid())
   reporterId String
   targetType ReportTargetType
   targetId   String
   reason     ReportReason
+  /// Précision optionnelle du signalant (pas obligatoire).
+  details    String?
   status     ReportStatus     @default(OPEN)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+
+  /// Identifiants / contexte figés pour l’examen (hors UI membre).
+  reporterIp              String?
+  reporterEmail           String?
+  reporterPseudonym       String?
+  targetAuthorId          String?
+  targetAuthorEmail       String?
+  targetAuthorPseudonym   String?
+  /// IP(s) de session connues de l’auteur au moment du signalement (best-effort Redis).
+  targetAuthorIp          String?
+  targetPreview           String?
+  targetCreatedAt         DateTime?
+  targetPublishedAt       DateTime?
+  communityId             String?
+  communityName           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   reporter         User              @relation(fields: [reporterId], references: [id], onDelete: Cascade)
   moderationAction ModerationAction?
 
   @@index([status, createdAt])
   @@index([targetType, targetId])
+  @@index([reporterId, status])
 }
 
 model ModerationAction {
-  id          String            @id @default(uuid())
-  moderatorId String
-  reportId    String?           @unique
-  measure     ModerationMeasure
-  reason      String
-  createdAt   DateTime          @default(now())
+  id            String            @id @default(uuid())
+  moderatorId   String
+  reportId      String?           @unique
+  /// Compte concerné par la mesure (auteur, signalant abusif, etc.).
+  subjectUserId String?
+  measure       ModerationMeasure
+  reason        String
+  createdAt     DateTime          @default(now())
 
-  moderator User    @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+  moderator User    @relation("ModerationActionsTaken", fields: [moderatorId], references: [id], onDelete: Cascade)
+  subject   User?   @relation("ModerationSubjects", fields: [subjectUserId], references: [id], onDelete: SetNull)
   report    Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([subjectUserId])
 }
