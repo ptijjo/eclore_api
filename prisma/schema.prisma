@@ -122,6 +122,20 @@ enum ModerationMeasure {
 enum NotificationType {
   COMMUNITY_PROPOSAL
   CONTENT_REPORT
+  MEMBERSHIP_REQUEST
+  MEMBERSHIP_ACCEPTED
+  MEMBERSHIP_REJECTED
+  /// Quelqu’un a laissé un signe de présence sur mon témoignage.
+  SUPPORT_REACTION
+}
+
+/// Signes de présence (pas des likes) — un seul par personne et par témoignage.
+enum SupportReactionKind {
+  I_UNDERSTAND
+  COURAGE
+  I_READ_YOU
+  NOT_ALONE
+  THANK_YOU_TRUST
 }
 
 enum PushPlatform {
@@ -158,6 +172,7 @@ model User {
   communityProposals       CommunityProposal[]
   notifications            Notification[]
   pushTokens               DevicePushToken[]
+  supportReactions         TestimonialSupportReaction[]
 }
 
 /// Token Expo Push — permet d’alerter hors app (écran verrouillé).
@@ -283,6 +298,8 @@ model Testimonial {
   format           TestimonialFormat
   status           TestimonialStatus     @default(DRAFT)
   intention        TestimonialIntention?
+  /// Thème parmi ceux de la communauté (évite le fourre-tout à la lecture).
+  topic            String?
   body             String?
   mediaId          String?               @unique
   /// L’auteur choisit si les réponses sont ouvertes (défaut : oui).
@@ -291,13 +308,31 @@ model Testimonial {
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 
-  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  community Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  media     MediaAsset? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
-  comments  Comment[]
+  author           User                        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community        Community                   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  media            MediaAsset?                 @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  comments         Comment[]
+  supportReactions TestimonialSupportReaction[]
 
   @@index([communityId, status, publishedAt])
+  @@index([communityId, status, topic])
   @@index([authorId, status])
+}
+
+/// Un membre = au plus un signe sur un témoignage (pas de multi-clic).
+model TestimonialSupportReaction {
+  id            String              @id @default(uuid())
+  testimonialId String
+  userId        String
+  kind          SupportReactionKind
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  testimonial Testimonial @relation(fields: [testimonialId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([testimonialId, userId])
+  @@index([testimonialId, kind])
 }
 
 model Comment {

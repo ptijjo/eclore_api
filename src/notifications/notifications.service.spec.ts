@@ -149,4 +149,15 @@ describe('NotificationsService', () => {
       data: { readAt: expect.any(Date) },
     });
   });
+
+  it('marque une notif comme lue pour le propriétaire', async () => {
+    prisma.notification.updateMany.mockResolvedValue({ count: 1 });
+    await expect(service.markOneRead('u1', 'n1')).resolves.toEqual({
+      count: 1,
+    });
+    expect(prisma.notification.updateMany).toHaveBeenCalledWith({
+      where: { id: 'n1', userId: 'u1', readAt: null },
+      data: { readAt: expect.any(Date) },
+    });
+  });
 });

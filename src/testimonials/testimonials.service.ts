@@ -17,6 +17,7 @@ const testimonialSelect = {
   format: true,
   status: true,
   intention: true,
+  topic: true,
   body: true,
   mediaId: true,
   commentsEnabled: true,
@@ -30,6 +31,14 @@ const testimonialSelect = {
   },
 } as const;
 
+/** Découpe le champ Community.theme en tags affichables. */
+export function parseCommunityThemeTags(theme: string): string[] {
+  return theme
+    .split(/[,·|/]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 @Injectable()
 export class TestimonialsService {
   constructor(
@@ -42,10 +51,23 @@ export class TestimonialsService {
     communityId: string,
     dto: CreateTestimonialDto,
   ) {
+    // Les ADMIN plateforme surveillent / régulent — ils ne déposent pas de témoignage.
+    const author = await this.prisma.user.findUnique({
+      where: { id: authorId },
+      select: { role: true },
+    });
+    if (author?.role === 'ADMIN') {
+      throw new ForbiddenException(
+        'Les comptes admin ne publient pas de témoignages. Leur rôle est de surveiller et de réguler.',
+      );
+    }
+
     await this.membershipAccess.requireAcceptedMembership(
       authorId,
       communityId,
     );
+
+    const topic = await this.resolveTopic(communityId, dto.topic);
 
     if (dto.format === 'TEXT') {
       if (!dto.body?.trim()) {
@@ -59,6 +81,7 @@ export class TestimonialsService {
           status: 'DRAFT',
           body: dto.body,
           intention: dto.intention,
+          topic,
           commentsEnabled: dto.commentsEnabled ?? true,
         },
         select: testimonialSelect,
@@ -78,6 +101,7 @@ export class TestimonialsService {
           status: 'DRAFT',
           mediaId: dto.mediaId,
           intention: dto.intention,
+          topic,
           commentsEnabled: dto.commentsEnabled ?? true,
         },
         select: testimonialSelect,
@@ -88,20 +112,42 @@ export class TestimonialsService {
     throw new BadRequestException(`Format non supporté: ${_exhaustive}`);
   }
 
+  /**
+   * Modifie un témoignage de l’auteur — brouillon ou déjà publié
+   * (texte, intention, commentaires). Pas de changement de statut ici.
+   */
   async update(userId: string, id: string, dto: UpdateTestimonialDto) {
-    const draft = await this.requireOwnDraft(userId, id);
-    if (draft.format === 'TEXT' && dto.body !== undefined && !dto.body.trim()) {
+    const own = await this.requireOwnEditable(userId, id);
+    if (own.format === 'TEXT' && dto.body !== undefined && !dto.body.trim()) {
       throw new BadRequestException('Le texte ne peut pas être vide.');
     }
+
+    const topic =
+      dto.topic !== undefined
+        ? await this.resolveTopic(own.communityId, dto.topic)
+        : undefined;
 
     return this.prisma.testimonial.update({
       where: { id },
       data: {
         body: dto.body,
         intention: dto.intention,
+        ...(topic !== undefined ? { topic } : {}),
         commentsEnabled: dto.commentsEnabled,
       },
       select: testimonialSelect,
+    });
+  }
+
+  /** Brouillons + publications de l’auteur (Mes témoignages). */
+  async listMine(userId: string) {
+    return this.prisma.testimonial.findMany({
+      where: { authorId: userId },
+      select: {
+        ...testimonialSelect,
+        community: { select: { id: true, name: true } },
+      },
+      orderBy: [{ updatedAt: 'desc' }],
     });
   }
 
@@ -145,10 +191,12 @@ export class TestimonialsService {
       ? await this.decodeCursor(query.cursor)
       : undefined;
 
+    const topicFilter = query.topic?.trim();
     const rows = await this.prisma.testimonial.findMany({
       where: {
         communityId,
         status: 'PUBLISHED',
+        ...(topicFilter ? { topic: topicFilter } : {}),
         ...(cursor
           ? {
               OR: [
@@ -215,6 +263,48 @@ export class TestimonialsService {
     return { message: 'Témoignage supprimé.' };
   }
 
+  /**
+   * Si la communauté a plusieurs thèmes → topic obligatoire et dans la liste.
+   * Un seul thème → topic = ce thème (ou le choix fourni s’il matche).
+   */
+  private async resolveTopic(
+    communityId: string,
+    topic: string | undefined,
+  ): Promise<string | null> {
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      select: { theme: true },
+    });
+    if (!community) {
+      throw new NotFoundException();
+    }
+    const tags = parseCommunityThemeTags(community.theme);
+    if (tags.length === 0) {
+      return topic?.trim() || null;
+    }
+    if (tags.length === 1) {
+      const only = tags[0]!;
+      if (topic?.trim() && topic.trim() !== only) {
+        throw new BadRequestException(
+          `Le thème doit être « ${only} » pour cette communauté.`,
+        );
+      }
+      return only;
+    }
+    const chosen = topic?.trim();
+    if (!chosen) {
+      throw new BadRequestException(
+        'Choisis un thème pour que les autres puissent te trouver plus facilement.',
+      );
+    }
+    if (!tags.includes(chosen)) {
+      throw new BadRequestException(
+        'Ce thème ne fait pas partie de cette communauté.',
+      );
+    }
+    return chosen;
+  }
+
   private async requireOwnDraft(userId: string, id: string) {
     const testimonial = await this.prisma.testimonial.findUnique({
       where: { id },
@@ -224,6 +314,26 @@ export class TestimonialsService {
     }
     if (testimonial.authorId !== userId) {
       throw new ForbiddenException();
+    }
+    return testimonial;
+  }
+
+  /** Auteur uniquement — brouillon ou publié (édition / paramètres). */
+  private async requireOwnEditable(userId: string, id: string) {
+    const testimonial = await this.prisma.testimonial.findUnique({
+      where: { id },
+    });
+    if (!testimonial) {
+      throw new NotFoundException();
+    }
+    if (testimonial.authorId !== userId) {
+      throw new ForbiddenException();
+    }
+    if (
+      testimonial.status !== 'DRAFT' &&
+      testimonial.status !== 'PUBLISHED'
+    ) {
+      throw new NotFoundException();
     }
     return testimonial;
   }

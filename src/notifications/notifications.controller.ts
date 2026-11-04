@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { NotificationsService } from './notifications.service.js';
 import { ListNotificationsQueryDto } from './dto/list-notifications.query.dto.js';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto.js';
@@ -32,5 +41,14 @@ export class NotificationsController {
     @Body() dto: RegisterPushTokenDto,
   ) {
     return this.notificationsService.registerPushToken(user.userId, dto);
+  }
+
+  /** Marquer une notification comme lue (elle disparaît de l’inbox non lues). */
+  @Post(':id/read')
+  markOneRead(
+    @CurrentUser() user: AuthenticatedRequestUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.notificationsService.markOneRead(user.userId, id);
   }
 }

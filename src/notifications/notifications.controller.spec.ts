@@ -12,6 +12,7 @@ describe('NotificationsController', () => {
   const service = {
     listForUser: mockFn(),
     markAllRead: mockFn(),
+    markOneRead: mockFn(),
     registerPushToken: mockFn(),
   };
 
@@ -64,6 +65,15 @@ describe('NotificationsController', () => {
       status: 'ACTIVE',
     });
     expect(service.markAllRead).toHaveBeenCalledWith('u1');
+  });
+
+  it('délègue markOneRead', async () => {
+    service.markOneRead.mockResolvedValue({ count: 1 });
+    await controller.markOneRead(
+      { userId: 'u1', sessionId: 's1', role: 'ADMIN', status: 'ACTIVE' },
+      'n1',
+    );
+    expect(service.markOneRead).toHaveBeenCalledWith('u1', 'n1');
   });
 
   it('délègue registerDeviceToken', async () => {

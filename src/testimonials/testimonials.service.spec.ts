@@ -21,6 +21,13 @@ describe('TestimonialsService', () => {
 
   beforeEach(() => {
     prisma = createMockPrismaService();
+    prisma.user.findUnique.mockResolvedValue({
+      role: 'USER',
+    });
+    // Thème unique par défaut → topic auto (pas d’obligation de choix).
+    prisma.community.findUnique.mockResolvedValue({
+      theme: 'Solitude et charge mentale',
+    });
     membershipAccess = {
       requireAcceptedMembership: mockFn().mockResolvedValue({
         status: 'ACCEPTED',
@@ -34,6 +41,18 @@ describe('TestimonialsService', () => {
   });
 
   describe('create', () => {
+    it('refuse un compte ADMIN (modération seulement)', async () => {
+      prisma.user.findUnique.mockResolvedValue({ role: 'ADMIN' });
+      await expect(
+        service.create('admin-1', 'c1', {
+          format: 'TEXT',
+          body: 'Ne doit pas passer',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(membershipAccess.requireAcceptedMembership).not.toHaveBeenCalled();
+      expect(prisma.testimonial.create).not.toHaveBeenCalled();
+    });
+
     it('crée un brouillon TEXT pour un membre', async () => {
       prisma.testimonial.create.mockResolvedValue({
         id: 't1',
@@ -54,7 +73,45 @@ describe('TestimonialsService', () => {
             status: 'DRAFT',
             format: 'TEXT',
             body: 'Mon histoire',
+            topic: 'Solitude et charge mentale',
             commentsEnabled: true,
+          }),
+        }),
+      );
+    });
+
+    it('exige un thème quand la communauté en a plusieurs', async () => {
+      prisma.community.findUnique.mockResolvedValue({
+        theme:
+          'Après une rupture amoureuse · Après un divorce · Reprendre confiance',
+      });
+      await expect(
+        service.create('u1', 'c1', {
+          format: 'TEXT',
+          body: 'Sans thème',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.testimonial.create).not.toHaveBeenCalled();
+    });
+
+    it('accepte un thème valide parmi plusieurs', async () => {
+      prisma.community.findUnique.mockResolvedValue({
+        theme:
+          'Après une rupture amoureuse · Après un divorce · Reprendre confiance',
+      });
+      prisma.testimonial.create.mockResolvedValue({
+        id: 't1',
+        topic: 'Après un divorce',
+      });
+      await service.create('u1', 'c1', {
+        format: 'TEXT',
+        body: 'Mon histoire',
+        topic: 'Après un divorce',
+      });
+      expect(prisma.testimonial.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            topic: 'Après un divorce',
           }),
         }),
       );
@@ -241,6 +298,39 @@ describe('TestimonialsService', () => {
       await expect(
         service.update('u1', 't1', { body: '   ' }),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('autorise la modification d’un témoignage déjà publié', async () => {
+      prisma.testimonial.findUnique.mockResolvedValue({
+        id: 't1',
+        authorId: 'u1',
+        status: 'PUBLISHED',
+        format: 'TEXT',
+        communityId: 'c1',
+      });
+      prisma.testimonial.update.mockResolvedValue({
+        id: 't1',
+        body: 'corrigé',
+        commentsEnabled: false,
+      });
+      await expect(
+        service.update('u1', 't1', {
+          body: 'corrigé',
+          commentsEnabled: false,
+        }),
+      ).resolves.toMatchObject({ body: 'corrigé' });
+    });
+  });
+
+  describe('listMine', () => {
+    it('liste les témoignages de l’auteur', async () => {
+      prisma.testimonial.findMany.mockResolvedValue([{ id: 't1' }]);
+      await expect(service.listMine('u1')).resolves.toEqual([{ id: 't1' }]);
+      expect(prisma.testimonial.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { authorId: 'u1' },
+        }),
+      );
     });
   });
 

@@ -36,6 +36,24 @@ export class MembershipsController {
     return this.membershipsService.leave(user.userId, communityId);
   }
 
+  /** Adhésion du user courant (NONE / PENDING / ACCEPTED / …). */
+  @Get('me')
+  getMine(
+    @CurrentUser() user: AuthenticatedRequestUser,
+    @Param('communityId') communityId: string,
+  ) {
+    return this.membershipsService.getMine(user.userId, communityId);
+  }
+
+  /** Demandes PENDING — avant la liste des membres acceptés. */
+  @Get('pending')
+  listPending(
+    @CurrentUser() user: AuthenticatedRequestUser,
+    @Param('communityId') communityId: string,
+  ) {
+    return this.membershipsService.listPending(user.userId, communityId);
+  }
+
   @Get()
   list(
     @CurrentUser() user: AuthenticatedRequestUser,

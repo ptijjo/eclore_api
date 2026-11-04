@@ -14,14 +14,15 @@ export class MembershipAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Accès contenu : communauté ACTIVE **et** membership ACCEPTED.
+   * Accès contenu : communauté ACTIVE **et** (membership ACCEPTED **ou** ADMIN plateforme ACTIVE).
+   * L’admin ops n’a pas à « demander l’accès » pour modérer / vérifier.
    * Tout autre cas → 404 (pas de fuite sur existence / statut).
    */
   async requireAcceptedMembership(
     userId: string,
     communityId: string,
   ): Promise<AcceptedMembership> {
-    const [membership, community] = await Promise.all([
+    const [membership, community, user] = await Promise.all([
       this.prisma.communityMembership.findUnique({
         where: {
           userId_communityId: { userId, communityId },
@@ -38,16 +39,31 @@ export class MembershipAccessService {
         where: { id: communityId },
         select: { id: true, status: true },
       }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true, status: true },
+      }),
     ]);
 
     if (!community || community.status !== 'ACTIVE') {
       throw new NotFoundException();
     }
 
-    if (!membership || membership.status !== 'ACCEPTED') {
-      throw new NotFoundException();
+    if (membership?.status === 'ACCEPTED') {
+      return membership as AcceptedMembership;
     }
 
-    return membership as AcceptedMembership;
+    // ADMIN plateforme ACTIVE : accès direct (hors parcours d’adhésion membre).
+    if (user?.role === 'ADMIN' && user.status === 'ACTIVE') {
+      return {
+        id: membership?.id ?? `admin-access:${userId}:${communityId}`,
+        userId,
+        communityId,
+        role: membership?.role ?? 'OWNER',
+        status: 'ACCEPTED',
+      };
+    }
+
+    throw new NotFoundException();
   }
 }

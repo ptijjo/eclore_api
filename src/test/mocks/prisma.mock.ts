@@ -54,8 +54,11 @@ export type MockPrismaService = {
   };
   comment: {
     findUnique: ReturnType<typeof mockFn>;
+    findMany: ReturnType<typeof mockFn>;
+    create: ReturnType<typeof mockFn>;
     update: ReturnType<typeof mockFn>;
     updateMany: ReturnType<typeof mockFn>;
+    delete: ReturnType<typeof mockFn>;
   };
   report: {
     findFirst: ReturnType<typeof mockFn>;
@@ -130,8 +133,11 @@ export function createMockPrismaService(): MockPrismaService {
     },
     comment: {
       findUnique: mockFn(),
+      findMany: mockFn(),
+      create: mockFn(),
       update: mockFn(),
       updateMany: mockFn(),
+      delete: mockFn(),
     },
     report: {
       findFirst: mockFn(),

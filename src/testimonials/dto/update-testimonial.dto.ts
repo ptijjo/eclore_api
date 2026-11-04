@@ -20,6 +20,12 @@ export class UpdateTestimonialDto {
   intention?: (typeof TestimonialIntention)[keyof typeof TestimonialIntention];
 
   @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  topic?: string;
+
+  @IsOptional()
   @IsBoolean()
   commentsEnabled?: boolean;
 }

@@ -31,6 +31,16 @@ export class CreateTestimonialDto {
   @IsEnum(TestimonialIntention)
   intention?: (typeof TestimonialIntention)[keyof typeof TestimonialIntention];
 
+  /**
+   * Thème de lecture — doit correspondre à un tag du `theme` de la communauté
+   * (séparateurs · , | /). Obligatoire si la communauté a plusieurs thèmes.
+   */
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  topic?: string;
+
   /** Défaut true côté Prisma si omis. */
   @IsOptional()
   @IsBoolean()

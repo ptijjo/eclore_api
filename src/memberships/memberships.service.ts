@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 const membershipSelect = {
   id: true,
@@ -27,12 +28,13 @@ export class MembershipsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async join(userId: string, communityId: string) {
     const community = await this.prisma.community.findUnique({
       where: { id: communityId },
-      select: { id: true, joinPolicy: true, status: true },
+      select: { id: true, name: true, joinPolicy: true, status: true },
     });
     // Adhésion seulement sur communauté ACTIVE (brouillon / suspendue / archivée → 404).
     if (!community || community.status !== 'ACTIVE') {
@@ -80,7 +82,74 @@ export class MembershipsService {
         });
 
     await this.markJoinCooldown(userId, communityId);
+
+    // Demande sur REQUEST → notifier responsables + ADMIN.
+    if (nextStatus === 'PENDING') {
+      const profile = await this.prisma.profile.findUnique({
+        where: { userId },
+        select: { pseudonym: true },
+      });
+      await this.notifications.notifyMembershipRequest({
+        communityId,
+        communityName: community.name,
+        requesterUserId: userId,
+        requesterPseudonym: profile?.pseudonym ?? 'un membre',
+      });
+    }
+
     return membership;
+  }
+
+  /**
+   * Statut d’adhésion du user courant — pour l’UI (témoigner seulement si ACCEPTED).
+   * ADMIN plateforme ACTIVE → accès direct (pas de demande d’adhésion).
+   * Communauté ACTIVE requise ; sinon 404.
+   */
+  async getMine(userId: string, communityId: string) {
+    const [community, user] = await Promise.all([
+      this.prisma.community.findUnique({
+        where: { id: communityId },
+        select: { id: true, status: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true, status: true },
+      }),
+    ]);
+    if (!community || community.status !== 'ACTIVE') {
+      throw new NotFoundException();
+    }
+
+    const membership = await this.prisma.communityMembership.findUnique({
+      where: { userId_communityId: { userId, communityId } },
+      select: membershipSelect,
+    });
+
+    if (membership && membership.status !== 'LEFT') {
+      return membership;
+    }
+
+    // Admin ops : accès immédiat sans passer par REQUEST / PENDING.
+    if (user?.role === 'ADMIN' && user.status === 'ACTIVE') {
+      return {
+        id: `admin-access:${userId}:${communityId}`,
+        userId,
+        communityId,
+        role: 'OWNER' as const,
+        status: 'ACCEPTED' as const,
+        lastJoinRequestedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    return {
+      communityId,
+      status: 'NONE' as const,
+      role: null,
+      id: null,
+      userId,
+    };
   }
 
   async leave(userId: string, communityId: string) {
@@ -118,23 +187,96 @@ export class MembershipsService {
     });
   }
 
+  /** File des demandes PENDING — OWNER / MODERATOR / ADMIN plateforme. */
+  async listPending(actorId: string, communityId: string) {
+    await this.requireCanDecide(actorId, communityId);
+
+    return this.prisma.communityMembership.findMany({
+      where: { communityId, status: 'PENDING' },
+      select: {
+        userId: true,
+        role: true,
+        status: true,
+        lastJoinRequestedAt: true,
+        createdAt: true,
+        user: {
+          select: {
+            profile: { select: { pseudonym: true } },
+          },
+        },
+      },
+      orderBy: { lastJoinRequestedAt: 'asc' },
+    });
+  }
+
+  /**
+   * Adhésions du user courant (ACCEPTED + PENDING) — pour badges liste / Accueil.
+   */
+  async listMine(userId: string) {
+    return this.prisma.communityMembership.findMany({
+      where: {
+        userId,
+        status: { in: ['PENDING', 'ACCEPTED'] },
+      },
+      select: {
+        ...membershipSelect,
+        community: {
+          select: { id: true, name: true, status: true },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  /**
+   * Toutes les demandes PENDING (toutes communautés) — ADMIN plateforme.
+   * Pour la file Accueil / cloche, pas seulement communauté par communauté.
+   */
+  async listAllPending(actorId: string) {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      select: { role: true, status: true },
+    });
+    if (actor?.role !== 'ADMIN' || actor.status !== 'ACTIVE') {
+      throw new ForbiddenException();
+    }
+
+    return this.prisma.communityMembership.findMany({
+      where: { status: 'PENDING' },
+      select: {
+        userId: true,
+        communityId: true,
+        role: true,
+        status: true,
+        lastJoinRequestedAt: true,
+        createdAt: true,
+        community: {
+          select: { id: true, name: true },
+        },
+        user: {
+          select: {
+            profile: { select: { pseudonym: true } },
+          },
+        },
+      },
+      orderBy: { lastJoinRequestedAt: 'asc' },
+    });
+  }
+
   async decide(
     moderatorId: string,
     communityId: string,
     targetUserId: string,
     decision: 'ACCEPT' | 'REJECT',
   ) {
-    const moderator = await this.prisma.communityMembership.findUnique({
-      where: {
-        userId_communityId: { userId: moderatorId, communityId },
-      },
+    await this.requireCanDecide(moderatorId, communityId);
+
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      select: { id: true, name: true, status: true },
     });
-    // OWNER et MODERATOR peuvent trancher les demandes — pas un ADMIN plateforme.
-    const canDecide =
-      moderator?.status === 'ACCEPTED' &&
-      (moderator.role === 'OWNER' || moderator.role === 'MODERATOR');
-    if (!canDecide) {
-      throw new ForbiddenException();
+    if (!community || community.status !== 'ACTIVE') {
+      throw new NotFoundException();
     }
 
     const target = await this.prisma.communityMembership.findUnique({
@@ -146,11 +288,45 @@ export class MembershipsService {
       throw new NotFoundException();
     }
 
-    return this.prisma.communityMembership.update({
+    const updated = await this.prisma.communityMembership.update({
       where: { id: target.id },
       data: { status: decision === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED' },
       select: membershipSelect,
     });
+
+    await this.notifications.notifyMembershipDecision({
+      communityId,
+      communityName: community.name,
+      targetUserId,
+      accepted: decision === 'ACCEPT',
+    });
+
+    return updated;
+  }
+
+  private async requireCanDecide(actorId: string, communityId: string) {
+    const [membership, actor] = await Promise.all([
+      this.prisma.communityMembership.findUnique({
+        where: {
+          userId_communityId: { userId: actorId, communityId },
+        },
+        select: { status: true, role: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: actorId },
+        select: { role: true, status: true },
+      }),
+    ]);
+
+    const isPlatformAdmin =
+      actor?.role === 'ADMIN' && actor.status === 'ACTIVE';
+    const isLocalModerator =
+      membership?.status === 'ACCEPTED' &&
+      (membership.role === 'OWNER' || membership.role === 'MODERATOR');
+
+    if (!isPlatformAdmin && !isLocalModerator) {
+      throw new ForbiddenException();
+    }
   }
 
   private async requireAccepted(userId: string, communityId: string) {

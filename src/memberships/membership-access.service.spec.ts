@@ -54,9 +54,38 @@ describe('MembershipAccessService', () => {
       id: 'c1',
       status: 'ACTIVE',
     });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      role: 'USER',
+      status: 'ACTIVE',
+    });
     await expect(
       service.requireAcceptedMembership('u1', 'c1'),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('autorise un ADMIN ACTIVE sans membership', async () => {
+    prisma.communityMembership.findUnique.mockResolvedValue(null);
+    prisma.community.findUnique.mockResolvedValue({
+      id: 'c1',
+      status: 'ACTIVE',
+    });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'admin-1',
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    });
+
+    await expect(
+      service.requireAcceptedMembership('admin-1', 'c1'),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        userId: 'admin-1',
+        communityId: 'c1',
+        status: 'ACCEPTED',
+        role: 'OWNER',
+      }),
+    );
   });
 
   it.each(['DRAFT', 'SUSPENDED', 'ARCHIVED'] as const)(

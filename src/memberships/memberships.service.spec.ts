@@ -15,19 +15,26 @@ import {
   type MockRedisService,
 } from '../test/mocks/redis.mock.js';
 import { createMockConfigService } from '../test/mocks/config.mock.js';
+import { mockFn } from '../test/mocks/jest-fn.js';
 
 describe('MembershipsService', () => {
   let service: MembershipsService;
   let prisma: MockPrismaService;
   let redis: MockRedisService;
+  const notifications = {
+    notifyMembershipRequest: mockFn(),
+    notifyMembershipDecision: mockFn(),
+  };
 
   const communityOpen = {
     id: 'c1',
+    name: 'Vie quotidienne',
     joinPolicy: 'OPEN',
     status: 'ACTIVE',
   };
   const communityRequest = {
     id: 'c1',
+    name: 'Se reconstruire',
     joinPolicy: 'REQUEST',
     status: 'ACTIVE',
   };
@@ -36,12 +43,15 @@ describe('MembershipsService', () => {
     prisma = createMockPrismaService();
     redis = createMockRedisService();
     redis.get.mockResolvedValue(null);
+    notifications.notifyMembershipRequest.mockResolvedValue(undefined);
+    notifications.notifyMembershipDecision.mockResolvedValue(undefined);
     service = new MembershipsService(
       prisma as never,
       redis as never,
       createMockConfigService({
         JOIN_REQUEST_COOLDOWN_SECONDS: '3600',
       }),
+      notifications as never,
     );
   });
 
@@ -67,12 +77,13 @@ describe('MembershipsService', () => {
       );
     });
 
-    it('REQUEST → PENDING', async () => {
+    it('REQUEST → PENDING et notifie les admins / responsables', async () => {
       prisma.community.findUnique.mockResolvedValue(communityRequest);
       prisma.communityMembership.findUnique.mockResolvedValue(null);
       prisma.communityMembership.create.mockResolvedValue({
         status: 'PENDING',
       });
+      prisma.profile.findUnique.mockResolvedValue({ pseudonym: 'lune' });
 
       await service.join('u1', 'c1');
       expect(prisma.communityMembership.create).toHaveBeenCalledWith(
@@ -80,6 +91,12 @@ describe('MembershipsService', () => {
           data: expect.objectContaining({ status: 'PENDING' }),
         }),
       );
+      expect(notifications.notifyMembershipRequest).toHaveBeenCalledWith({
+        communityId: 'c1',
+        communityName: 'Se reconstruire',
+        requesterUserId: 'u1',
+        requesterPseudonym: 'lune',
+      });
     });
 
     it('réadhésion LEFT + OPEN → ACCEPTED', async () => {
@@ -196,7 +213,11 @@ describe('MembershipsService', () => {
   });
 
   describe('decide', () => {
-    it('modérateur accepte une demande PENDING', async () => {
+    it('modérateur accepte une demande PENDING et notifie', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        role: 'USER',
+        status: 'ACTIVE',
+      });
       prisma.communityMembership.findUnique
         .mockResolvedValueOnce({
           status: 'ACCEPTED',
@@ -207,6 +228,11 @@ describe('MembershipsService', () => {
           userId: 'u2',
           status: 'PENDING',
         });
+      prisma.community.findUnique.mockResolvedValue({
+        id: 'c1',
+        name: 'Se reconstruire',
+        status: 'ACTIVE',
+      });
       prisma.communityMembership.update.mockResolvedValue({
         status: 'ACCEPTED',
       });
@@ -214,9 +240,19 @@ describe('MembershipsService', () => {
       await expect(
         service.decide('mod1', 'c1', 'u2', 'ACCEPT'),
       ).resolves.toEqual({ status: 'ACCEPTED' });
+      expect(notifications.notifyMembershipDecision).toHaveBeenCalledWith({
+        communityId: 'c1',
+        communityName: 'Se reconstruire',
+        targetUserId: 'u2',
+        accepted: true,
+      });
     });
 
-    it('refuse un non-modérateur', async () => {
+    it('refuse un non-modérateur (non ADMIN)', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        role: 'USER',
+        status: 'ACTIVE',
+      });
       prisma.communityMembership.findUnique.mockResolvedValue({
         status: 'ACCEPTED',
         role: 'MEMBER',
@@ -226,7 +262,37 @@ describe('MembershipsService', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
+    it('ADMIN plateforme peut accepter sans membership locale', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        role: 'ADMIN',
+        status: 'ACTIVE',
+      });
+      prisma.communityMembership.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 'm2',
+          userId: 'u2',
+          status: 'PENDING',
+        });
+      prisma.community.findUnique.mockResolvedValue({
+        id: 'c1',
+        name: 'Se reconstruire',
+        status: 'ACTIVE',
+      });
+      prisma.communityMembership.update.mockResolvedValue({
+        status: 'ACCEPTED',
+      });
+
+      await expect(
+        service.decide('admin-1', 'c1', 'u2', 'ACCEPT'),
+      ).resolves.toEqual({ status: 'ACCEPTED' });
+    });
+
     it('OWNER peut accepter une demande PENDING', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        role: 'USER',
+        status: 'ACTIVE',
+      });
       prisma.communityMembership.findUnique
         .mockResolvedValueOnce({
           status: 'ACCEPTED',
@@ -237,6 +303,11 @@ describe('MembershipsService', () => {
           userId: 'u2',
           status: 'PENDING',
         });
+      prisma.community.findUnique.mockResolvedValue({
+        id: 'c1',
+        name: 'Se reconstruire',
+        status: 'ACTIVE',
+      });
       prisma.communityMembership.update.mockResolvedValue({
         status: 'ACCEPTED',
       });
@@ -247,6 +318,10 @@ describe('MembershipsService', () => {
     });
 
     it('404 si cible non PENDING', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        role: 'USER',
+        status: 'ACTIVE',
+      });
       prisma.communityMembership.findUnique
         .mockResolvedValueOnce({
           status: 'ACCEPTED',
@@ -255,6 +330,11 @@ describe('MembershipsService', () => {
         .mockResolvedValueOnce({
           status: 'LEFT',
         });
+      prisma.community.findUnique.mockResolvedValue({
+        id: 'c1',
+        name: 'Se reconstruire',
+        status: 'ACTIVE',
+      });
       await expect(
         service.decide('mod1', 'c1', 'u2', 'REJECT'),
       ).rejects.toBeInstanceOf(NotFoundException);

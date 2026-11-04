@@ -29,7 +29,7 @@ const STARTER_COMMUNITIES = [
   },
   {
     name: 'Relations difficiles',
-    theme: 'Couple, famille, amitiés',
+    theme: 'Couple · Famille · Amitiés',
     description:
       'Pour évoquer les liens qui font mal ou qui se défont : couple, famille, amitiés toxiques, ruptures. À ton rythme, sans devoir tout expliquer.',
     joinPolicy: 'REQUEST' as const,
@@ -50,9 +50,11 @@ const STARTER_COMMUNITIES = [
   },
   {
     name: 'Se reconstruire',
-    theme: 'Après une épreuve',
+    // Thèmes affichés en pastilles (séparateur ·) — pas de sous-communautés MVP.
+    theme:
+      'Après une rupture amoureuse · Après un divorce · Après une séparation · Reprendre confiance · Autre épreuve',
     description:
-      'Pour celles et ceux qui avancent après une épreuve, à petits pas. Partager une reprise de confiance, un doute, ou simplement être présent·e.',
+      'Pour celles et ceux qui avancent après une épreuve, à petits pas : rupture, divorce, séparation, perte de repères… Partager une reprise de confiance, un doute, ou simplement être présent·e.',
     joinPolicy: 'REQUEST' as const,
   },
   {

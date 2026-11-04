@@ -45,6 +45,12 @@ export class TestimonialsController {
     );
   }
 
+  /** Avant :id — sinon « mine » serait capturé comme uuid. */
+  @Get('testimonials/mine')
+  listMine(@CurrentUser() user: AuthenticatedRequestUser) {
+    return this.testimonialsService.listMine(user.userId);
+  }
+
   @Get('testimonials/:id')
   getById(
     @CurrentUser() user: AuthenticatedRequestUser,

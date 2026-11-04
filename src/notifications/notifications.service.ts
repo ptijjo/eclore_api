@@ -29,6 +29,28 @@ export type ContentReportNotifyInput = {
   targetType: string;
 };
 
+export type MembershipRequestNotifyInput = {
+  communityId: string;
+  communityName: string;
+  requesterUserId: string;
+  requesterPseudonym: string;
+};
+
+export type MembershipDecisionNotifyInput = {
+  communityId: string;
+  communityName: string;
+  targetUserId: string;
+  accepted: boolean;
+};
+
+export type SupportReactionNotifyInput = {
+  authorUserId: string;
+  actorPseudonym: string;
+  kindLabel: string;
+  testimonialId: string;
+  communityId: string;
+};
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -113,6 +135,123 @@ export class NotificationsService {
     });
   }
 
+  /**
+   * Demande d’adhésion REQUEST → notifier OWNER / MODERATOR + ADMIN plateforme.
+   */
+  async notifyMembershipRequest(input: MembershipRequestNotifyInput) {
+    const [responsibles, admins] = await Promise.all([
+      this.prisma.communityMembership.findMany({
+        where: {
+          communityId: input.communityId,
+          status: 'ACCEPTED',
+          role: { in: ['OWNER', 'MODERATOR'] },
+        },
+        select: { userId: true },
+      }),
+      this.prisma.user.findMany({
+        where: { role: 'ADMIN', status: 'ACTIVE' },
+        select: { id: true },
+      }),
+    ]);
+
+    const recipientIds = [
+      ...new Set([
+        ...responsibles.map((row) => row.userId),
+        ...admins.map((admin) => admin.id),
+      ]),
+    ].filter((id) => id !== input.requesterUserId);
+
+    if (recipientIds.length === 0) {
+      return;
+    }
+
+    await this.prisma.notification.createMany({
+      data: recipientIds.map((userId) => ({
+        userId,
+        type: 'MEMBERSHIP_REQUEST',
+        title: 'Demande d’accès',
+        body: `@${input.requesterPseudonym} souhaite rejoindre « ${input.communityName} »`,
+        data: {
+          communityId: input.communityId,
+          requesterUserId: input.requesterUserId,
+        },
+      })),
+    });
+
+    await this.pushToUsers(recipientIds, {
+      title: 'Éclore',
+      body: 'Tu as une nouvelle interaction sur Éclore',
+      data: {
+        type: 'MEMBERSHIP_REQUEST',
+        communityId: input.communityId,
+      },
+    });
+  }
+
+  /**
+   * Signe de présence sur un témoignage → notifier l’auteur.
+   * Push générique (pas de détail sensible sur l’écran verrouillé).
+   */
+  async notifySupportReaction(input: SupportReactionNotifyInput) {
+    await this.prisma.notification.create({
+      data: {
+        userId: input.authorUserId,
+        type: 'SUPPORT_REACTION',
+        title: 'Nouveau signe de présence',
+        body: `@${input.actorPseudonym} a laissé « ${input.kindLabel} » sur ton témoignage.`,
+        data: {
+          testimonialId: input.testimonialId,
+          communityId: input.communityId,
+        },
+      },
+    });
+
+    await this.pushToUsers([input.authorUserId], {
+      title: 'Éclore',
+      body: 'Tu as une nouvelle interaction sur Éclore',
+      data: {
+        type: 'SUPPORT_REACTION',
+        testimonialId: input.testimonialId,
+        communityId: input.communityId,
+      },
+    });
+  }
+
+  /** Décision d’adhésion → notifier la personne concernée. */
+  async notifyMembershipDecision(input: MembershipDecisionNotifyInput) {
+    const type = input.accepted
+      ? 'MEMBERSHIP_ACCEPTED'
+      : 'MEMBERSHIP_REJECTED';
+    const title = input.accepted
+      ? 'Accès accepté'
+      : 'Demande non retenue';
+    const body = input.accepted
+      ? `Tu peux maintenant accéder à « ${input.communityName} ».`
+      : `Ta demande pour « ${input.communityName} » n’a pas été acceptée.`;
+
+    await this.prisma.notification.create({
+      data: {
+        userId: input.targetUserId,
+        type,
+        title,
+        body,
+        data: {
+          communityId: input.communityId,
+          decision: input.accepted ? 'ACCEPT' : 'REJECT',
+        },
+      },
+    });
+
+    await this.pushToUsers([input.targetUserId], {
+      title: 'Éclore',
+      body: 'Tu as une nouvelle interaction sur Éclore',
+      data: {
+        type,
+        communityId: input.communityId,
+      },
+    });
+  }
+
   listForUser(userId: string, unreadOnly: boolean) {
     return this.prisma.notification.findMany({
       where: {
@@ -130,6 +269,15 @@ export class NotificationsService {
       where: { userId, readAt: null },
       data: { readAt: new Date() },
     });
+  }
+
+  /** Marque une notification comme lue — uniquement si elle appartient au user. */
+  async markOneRead(userId: string, notificationId: string) {
+    const updated = await this.prisma.notification.updateMany({
+      where: { id: notificationId, userId, readAt: null },
+      data: { readAt: new Date() },
+    });
+    return { count: updated.count };
   }
 
   /**
