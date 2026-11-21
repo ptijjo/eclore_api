@@ -129,6 +129,8 @@ enum NotificationType {
   MEMBERSHIP_REJECTED
   /// Quelqu’un a laissé un signe de présence sur mon témoignage.
   SUPPORT_REACTION
+  /// Quelqu’un a répondu sous mon témoignage.
+  TESTIMONIAL_COMMENT
 }
 
 /// Signes de présence (pas des likes) — un seul par personne et par témoignage.

@@ -17,6 +17,9 @@ describe('CommentsService', () => {
   const membershipAccess = {
     requireAcceptedMembership: mockFn(),
   };
+  const notifications = {
+    notifyTestimonialComment: mockFn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -24,12 +27,20 @@ describe('CommentsService', () => {
     membershipAccess.requireAcceptedMembership.mockResolvedValue({
       status: 'ACCEPTED',
     });
-    service = new CommentsService(prisma as never, membershipAccess as never);
+    notifications.notifyTestimonialComment.mockResolvedValue(undefined);
+    service = new CommentsService(
+      prisma as never,
+      membershipAccess as never,
+      notifications as never,
+    );
   });
 
   describe('create', () => {
-    it('crée un commentaire sur un témoignage publié ouvert', async () => {
-      prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+    it('crée un commentaire et notifie l’auteur du témoignage', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        role: 'USER',
+        profile: { pseudonym: 'luna' },
+      });
       prisma.testimonial.findUnique.mockResolvedValue({
         id: 't1',
         communityId: 'c1',
@@ -46,6 +57,34 @@ describe('CommentsService', () => {
         service.create('u1', 't1', { body: 'Je t’ai lu·e' }),
       ).resolves.toMatchObject({ id: 'cm1' });
       expect(prisma.comment.create).toHaveBeenCalled();
+      expect(notifications.notifyTestimonialComment).toHaveBeenCalledWith({
+        authorUserId: 'author',
+        actorPseudonym: 'luna',
+        testimonialId: 't1',
+        communityId: 'c1',
+        commentId: 'cm1',
+      });
+    });
+
+    it('ne notifie pas si l’auteur commente son propre témoignage', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        role: 'USER',
+        profile: { pseudonym: 'luna' },
+      });
+      prisma.testimonial.findUnique.mockResolvedValue({
+        id: 't1',
+        communityId: 'c1',
+        status: 'PUBLISHED',
+        commentsEnabled: true,
+        authorId: 'u1',
+      });
+      prisma.comment.create.mockResolvedValue({
+        id: 'cm1',
+        body: 'Note perso',
+      });
+
+      await service.create('u1', 't1', { body: 'Note perso' });
+      expect(notifications.notifyTestimonialComment).not.toHaveBeenCalled();
     });
 
     it('refuse si commentaires fermés', async () => {

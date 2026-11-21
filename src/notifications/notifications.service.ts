@@ -51,6 +51,14 @@ export type SupportReactionNotifyInput = {
   communityId: string;
 };
 
+export type TestimonialCommentNotifyInput = {
+  authorUserId: string;
+  actorPseudonym: string;
+  testimonialId: string;
+  communityId: string;
+  commentId: string;
+};
+
 export type ThemeProposalNotifyInput = {
   id: string;
   communityId: string;
@@ -258,7 +266,7 @@ export class NotificationsService {
 
   /**
    * Signe de présence sur un témoignage → notifier l’auteur.
-   * Push générique (pas de détail sensible sur l’écran verrouillé).
+   * Push explicite sur le type d’événement, sans détail sensible lock-screen.
    */
   async notifySupportReaction(input: SupportReactionNotifyInput) {
     await this.prisma.notification.create({
@@ -276,11 +284,43 @@ export class NotificationsService {
 
     await this.pushToUsers([input.authorUserId], {
       title: 'Éclore',
-      body: 'Tu as une nouvelle interaction sur Éclore',
+      body: 'Nouveau signe de présence sur ton témoignage',
       data: {
         type: 'SUPPORT_REACTION',
         testimonialId: input.testimonialId,
         communityId: input.communityId,
+      },
+    });
+  }
+
+  /**
+   * Message sous un témoignage → notifier l’auteur (pas soi-même).
+   * In-app : qui a répondu. Push : type d’événement, pas le texte du message.
+   * data inclut commentId pour ouvrir directement le fil côté app.
+   */
+  async notifyTestimonialComment(input: TestimonialCommentNotifyInput) {
+    await this.prisma.notification.create({
+      data: {
+        userId: input.authorUserId,
+        type: 'TESTIMONIAL_COMMENT',
+        title: 'Nouveau message',
+        body: `@${input.actorPseudonym} a répondu à ton témoignage.`,
+        data: {
+          testimonialId: input.testimonialId,
+          communityId: input.communityId,
+          commentId: input.commentId,
+        },
+      },
+    });
+
+    await this.pushToUsers([input.authorUserId], {
+      title: 'Éclore',
+      body: 'Nouveau message sur ton témoignage',
+      data: {
+        type: 'TESTIMONIAL_COMMENT',
+        testimonialId: input.testimonialId,
+        communityId: input.communityId,
+        commentId: input.commentId,
       },
     });
   }

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { MembershipAccessService } from '../memberships/membership-access.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import type { CreateCommentDto } from './dto/create-comment.dto.js';
 
 const commentSelect = {
@@ -28,6 +29,7 @@ export class CommentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly membershipAccess: MembershipAccessService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -58,7 +60,10 @@ export class CommentsService {
   async create(userId: string, testimonialId: string, dto: CreateCommentDto) {
     const author = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: {
+        role: true,
+        profile: { select: { pseudonym: true } },
+      },
     });
     if (author?.role === 'ADMIN') {
       throw new ForbiddenException(
@@ -81,7 +86,7 @@ export class CommentsService {
       throw new BadRequestException('Le commentaire ne peut pas être vide.');
     }
 
-    return this.prisma.comment.create({
+    const comment = await this.prisma.comment.create({
       data: {
         testimonialId: testimonial.id,
         authorId: userId,
@@ -90,6 +95,19 @@ export class CommentsService {
       },
       select: commentSelect,
     });
+
+    // Notifier le propriétaire de la confidence — pas soi-même.
+    if (testimonial.authorId !== userId) {
+      await this.notifications.notifyTestimonialComment({
+        authorUserId: testimonial.authorId,
+        actorPseudonym: author?.profile?.pseudonym ?? 'Un membre',
+        testimonialId: testimonial.id,
+        communityId: testimonial.communityId,
+        commentId: comment.id,
+      });
+    }
+
+    return comment;
   }
 
   /**

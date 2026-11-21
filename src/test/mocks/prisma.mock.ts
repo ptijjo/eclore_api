@@ -41,6 +41,7 @@ export type MockPrismaService = {
     update: ReturnType<typeof mockFn>;
   };
   notification: {
+    create: ReturnType<typeof mockFn>;
     createMany: ReturnType<typeof mockFn>;
     findMany: ReturnType<typeof mockFn>;
     updateMany: ReturnType<typeof mockFn>;
@@ -126,6 +127,7 @@ export function createMockPrismaService(): MockPrismaService {
       update: mockFn(),
     },
     notification: {
+      create: mockFn(),
       createMany: mockFn(),
       findMany: mockFn(),
       updateMany: mockFn(),

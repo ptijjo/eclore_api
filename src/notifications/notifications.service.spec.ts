@@ -94,6 +94,82 @@ describe('NotificationsService', () => {
     });
   });
 
+  it('notifie l’auteur d’un nouveau message (in-app explicite, push sans contenu)', async () => {
+    prisma.notification.create.mockResolvedValue({ id: 'n1' });
+    prisma.devicePushToken.findMany.mockResolvedValue([
+      { token: 'ExponentPushToken[msg]' },
+    ]);
+
+    await service.notifyTestimonialComment({
+      authorUserId: 'author1',
+      actorPseudonym: 'luna',
+      testimonialId: 't1',
+      communityId: 'c1',
+      commentId: 'cm1',
+    });
+
+    expect(prisma.notification.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'author1',
+        type: 'TESTIMONIAL_COMMENT',
+        title: 'Nouveau message',
+        body: '@luna a répondu à ton témoignage.',
+        data: {
+          testimonialId: 't1',
+          communityId: 'c1',
+          commentId: 'cm1',
+        },
+      }),
+    });
+    expect(expoPush.send).toHaveBeenCalledWith([
+      expect.objectContaining({
+        to: 'ExponentPushToken[msg]',
+        title: 'Éclore',
+        body: 'Nouveau message sur ton témoignage',
+        data: expect.objectContaining({
+          type: 'TESTIMONIAL_COMMENT',
+          testimonialId: 't1',
+          communityId: 'c1',
+          commentId: 'cm1',
+        }),
+      }),
+    ]);
+  });
+
+  it('notifie l’auteur d’un signe de présence avec un push explicite', async () => {
+    prisma.notification.create.mockResolvedValue({ id: 'n2' });
+    prisma.devicePushToken.findMany.mockResolvedValue([
+      { token: 'ExponentPushToken[react]' },
+    ]);
+
+    await service.notifySupportReaction({
+      authorUserId: 'author1',
+      actorPseudonym: 'luna',
+      kindLabel: 'Je t’ai lu·e',
+      testimonialId: 't1',
+      communityId: 'c1',
+    });
+
+    expect(prisma.notification.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'author1',
+        type: 'SUPPORT_REACTION',
+        title: 'Nouveau signe de présence',
+        body: '@luna a laissé « Je t’ai lu·e » sur ton témoignage.',
+      }),
+    });
+    expect(expoPush.send).toHaveBeenCalledWith([
+      expect.objectContaining({
+        body: 'Nouveau signe de présence sur ton témoignage',
+        data: expect.objectContaining({
+          type: 'SUPPORT_REACTION',
+          testimonialId: 't1',
+          communityId: 'c1',
+        }),
+      }),
+    ]);
+  });
+
   it('enregistre un token push (upsert)', async () => {
     const row = {
       id: 't1',
