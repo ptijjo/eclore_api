@@ -121,6 +121,8 @@ enum ModerationMeasure {
 /// Types de notifications in-app (+ push Expo).
 enum NotificationType {
   COMMUNITY_PROPOSAL
+  /// Proposition d’une pastille thème dans une communauté existante.
+  THEME_PROPOSAL
   CONTENT_REPORT
   MEMBERSHIP_REQUEST
   MEMBERSHIP_ACCEPTED
@@ -170,6 +172,7 @@ model User {
   moderationActions        ModerationAction[]            @relation("ModerationActionsTaken")
   moderationSubjects       ModerationAction[]            @relation("ModerationSubjects")
   communityProposals       CommunityProposal[]
+  themeProposals           CommunityThemeProposal[]
   notifications            Notification[]
   pushTokens               DevicePushToken[]
   supportReactions         TestimonialSupportReaction[]
@@ -235,8 +238,29 @@ model Community {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
-  memberships  CommunityMembership[]
-  testimonials Testimonial[]
+  memberships    CommunityMembership[]
+  testimonials   Testimonial[]
+  themeProposals CommunityThemeProposal[]
+}
+
+/// Pastille thème proposée par un membre — pas de rôle de modération attaché.
+model CommunityThemeProposal {
+  id          String                  @id @default(uuid())
+  communityId String
+  proposerId  String
+  /// Libellé de la pastille (ajouté à Community.theme si ACCEPTED).
+  label       String
+  rationale   String
+  status      CommunityProposalStatus @default(PENDING)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  proposer  User      @relation(fields: [proposerId], references: [id], onDelete: Cascade)
+
+  @@index([communityId, status, createdAt])
+  @@index([proposerId])
+  @@index([status, createdAt])
 }
 
 /// Idée soumise par un membre — l’équipe Éclore crée la communauté si retenue.

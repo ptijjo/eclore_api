@@ -34,6 +34,12 @@ export type MockPrismaService = {
     findMany: ReturnType<typeof mockFn>;
     update: ReturnType<typeof mockFn>;
   };
+  communityThemeProposal: {
+    create: ReturnType<typeof mockFn>;
+    findUnique: ReturnType<typeof mockFn>;
+    findMany: ReturnType<typeof mockFn>;
+    update: ReturnType<typeof mockFn>;
+  };
   notification: {
     createMany: ReturnType<typeof mockFn>;
     findMany: ReturnType<typeof mockFn>;
@@ -108,6 +114,12 @@ export function createMockPrismaService(): MockPrismaService {
       count: mockFn(),
     },
     communityProposal: {
+      create: mockFn(),
+      findUnique: mockFn(),
+      findMany: mockFn(),
+      update: mockFn(),
+    },
+    communityThemeProposal: {
       create: mockFn(),
       findUnique: mockFn(),
       findMany: mockFn(),

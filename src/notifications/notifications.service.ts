@@ -51,6 +51,14 @@ export type SupportReactionNotifyInput = {
   communityId: string;
 };
 
+export type ThemeProposalNotifyInput = {
+  id: string;
+  communityId: string;
+  communityName: string;
+  label: string;
+  rationale: string;
+};
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -184,6 +192,66 @@ export class NotificationsService {
       data: {
         type: 'MEMBERSHIP_REQUEST',
         communityId: input.communityId,
+      },
+    });
+  }
+
+  /**
+   * Proposition de pastille thème → OWNER / MODERATOR + ADMIN.
+   * Pas de rôle spécial pour le demandeur ; décision humaine.
+   */
+  async notifyThemeProposal(input: ThemeProposalNotifyInput) {
+    const [responsibles, admins] = await Promise.all([
+      this.prisma.communityMembership.findMany({
+        where: {
+          communityId: input.communityId,
+          status: 'ACCEPTED',
+          role: { in: ['OWNER', 'MODERATOR'] },
+        },
+        select: { userId: true },
+      }),
+      this.prisma.user.findMany({
+        where: { role: 'ADMIN', status: 'ACTIVE' },
+        select: { id: true },
+      }),
+    ]);
+
+    const recipientIds = [
+      ...new Set([
+        ...responsibles.map((row) => row.userId),
+        ...admins.map((admin) => admin.id),
+      ]),
+    ];
+
+    if (recipientIds.length === 0) {
+      return;
+    }
+
+    const bodyPreview =
+      input.rationale.length > 120
+        ? `${input.rationale.slice(0, 117)}…`
+        : input.rationale;
+
+    await this.prisma.notification.createMany({
+      data: recipientIds.map((userId) => ({
+        userId,
+        type: 'THEME_PROPOSAL',
+        title: 'Proposition de thème',
+        body: `« ${input.label} » dans ${input.communityName} — ${bodyPreview}`,
+        data: {
+          themeProposalId: input.id,
+          communityId: input.communityId,
+        },
+      })),
+    });
+
+    await this.pushToUsers(recipientIds, {
+      title: 'Éclore',
+      body: 'Tu as une nouvelle interaction sur Éclore',
+      data: {
+        type: 'THEME_PROPOSAL',
+        communityId: input.communityId,
+        themeProposalId: input.id,
       },
     });
   }

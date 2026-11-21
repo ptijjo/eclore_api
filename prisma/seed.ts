@@ -1,5 +1,5 @@
-import * as bcrypt from 'bcrypt';
 import { PrismaPg } from '@prisma/adapter-pg';
+import * as bcrypt from 'bcrypt';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
 function requireEnv(name: string): string {
@@ -18,39 +18,45 @@ const SHARED_RULES = `Règles de cet espace Éclore :
 • Éclore n’est pas un service d’urgence ni un suivi médical.
 • Tu peux signaler un contenu qui ne respecte pas ces règles.`;
 
-/** Catalogue initial MVP — volontairement court et modérable. */
+/**
+ * Catalogue initial MVP — volontairement court et modérable.
+ * Plusieurs thèmes (séparateur ·) pour filtrer le fil et éviter le fourre-tout.
+ */
 const STARTER_COMMUNITIES = [
   {
     name: 'Vie quotidienne',
-    theme: 'Solitude et charge mentale',
+    theme:
+      'Solitude · Charge mentale · Fatigue du quotidien · Impression de tout porter · Autre',
     description:
       'Un espace pour parler du quotidien : fatigue, solitude, charge mentale, impression de tout porter seul·e. Tu peux venir sans « grosse » histoire à raconter.',
     joinPolicy: 'REQUEST' as const,
   },
   {
     name: 'Relations difficiles',
-    theme: 'Couple · Famille · Amitiés',
+    theme:
+      'Couple · Famille · Amitiés · Liens toxiques · Rupture relationnelle',
     description:
       'Pour évoquer les liens qui font mal ou qui se défont : couple, famille, amitiés toxiques, ruptures. À ton rythme, sans devoir tout expliquer.',
     joinPolicy: 'REQUEST' as const,
   },
   {
     name: 'Deuil et absences',
-    theme: 'Perte et séparation',
+    theme:
+      'Deuil d’une personne · Absence d’un proche · Fin d’une relation · Deuil d’un projet · Autre absence',
     description:
       'Un espace pour les deuils et les absences — d’une personne, d’une relation, d’un projet. Ici, on peut nommer le vide sans se justifier.',
     joinPolicy: 'REQUEST' as const,
   },
   {
     name: 'Travail et estime de soi',
-    theme: 'Burn-out, honte, pression',
+    theme:
+      'Burn-out · Pression au travail · Honte · Rejet · Estime de soi · Autre',
     description:
       'Pour parler du travail, de la pression, du burn-out, de la honte ou du rejet. Un endroit pour déposer ce que tu vis sans concours de performance.',
     joinPolicy: 'REQUEST' as const,
   },
   {
     name: 'Se reconstruire',
-    // Thèmes affichés en pastilles (séparateur ·) — pas de sous-communautés MVP.
     theme:
       'Après une rupture amoureuse · Après un divorce · Après une séparation · Reprendre confiance · Autre épreuve',
     description:
@@ -59,9 +65,18 @@ const STARTER_COMMUNITIES = [
   },
   {
     name: 'Juste parler',
-    theme: 'Sans étiquette',
+    theme:
+      'Je dépose sans savoir · J’ai besoin d’une oreille · Je cherche des repères · Autre',
     description:
-      'Si tu ne sais pas encore où aller : un espace pour parler sans devoir choisir une catégorie. « Je ne sais pas encore ce dont j’ai besoin » est une intention valide.',
+      'Si tu ne sais pas encore où aller : un espace pour parler sans devoir forcer une catégorie. « Je ne sais pas encore ce dont j’ai besoin » est une intention valide.',
+    joinPolicy: 'REQUEST' as const,
+  },
+  {
+    name: 'Discrimination',
+    theme:
+      'Sexisme · Grossophobie · Racisme · Homophobie / LGBTphobie · Validisme · Âgisme · Transphobie · Classisme · Autre discrimination',
+    description:
+      'Un espace pour témoigner des discriminations vécues ou observées — sans concours de souffrance. Choisis le thème qui se rapproche le plus ; tu peux aussi suggérer une pastille manquante.',
     joinPolicy: 'REQUEST' as const,
   },
 ] as const;
